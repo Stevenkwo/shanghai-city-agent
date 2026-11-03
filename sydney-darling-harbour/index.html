@@ -48,7 +48,7 @@
   #rail .rc.open { font:600 14px var(--f-mono); color:var(--ink2); padding:7px 0; }
   .panel .scroll { overflow:auto; padding:18px 18px 20px; flex:1; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.15) transparent; }
   .kicker { display:flex; justify-content:space-between; font:600 10px/1 var(--f-mono); letter-spacing:.22em; color:var(--cyan); }
-  .kicker i { font-style:normal; color:var(--ink3); letter-spacing:.06em; }
+  .kicker i { font-style:normal; color:var(--ink3); letter-spacing:.06em; white-space:nowrap; margin-left:10px; }
   h1 { font:600 23px/1.2 var(--f-ui); margin:12px 0 5px; letter-spacing:.02em; }
   .coord { font:11px/1.4 var(--f-mono); color:var(--ink3); letter-spacing:.02em; }
   .kpis { display:grid; grid-template-columns:repeat(3, 1fr); margin:16px 0 4px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
@@ -539,7 +539,7 @@ const VOC = {
 const tr = (s) => (EN && VOC[s] != null ? VOC[s] : s);
 // 静态界面字（页签、标题、按钮、提示）：英文页开场换一遍；公开站「← 上海城市智能体」那句（build.py 换进来的）也在这里
 const UI_EN = {
-  "SITE MODEL · 场地模型": "SITE MODEL", "← 上海城市智能体": "← Shanghai City Agent", "· 场地模型": "· SITE MODEL", "回到首页": "Back to home",
+  "SITE MODEL · 场地模型": "SITE MODEL", "← 上海城市智能体": "← SHANGHAI CITY AGENT", "· 场地模型": "", "回到首页": "Back to home",
   "周边配套": "Amenities", "体块": "Massing", "交通": "Transport", "全部": "All", "清空": "None", "NEAREST · 最近一处": "NEAREST",
   "MASSING · 体块着色（半透明）": "MASSING · COLOUR BY", "高度": "Height", "功能": "Use", "年代": "Era", "来源": "Source",
   "MODEL · 车流推算": "MODEL · TRAFFIC (ESTIMATED)",
@@ -555,7 +555,7 @@ if (EN) {
   for (let n; (n = w.nextNode());) {
     if (n.parentElement.tagName === "SCRIPT") continue;       // 数据块动辄十几 MB，不碰
     const k = n.nodeValue.trim();
-    if (UI_EN[k]) n.nodeValue = n.nodeValue.replace(k, UI_EN[k]);
+    if (UI_EN[k] != null) n.nodeValue = n.nodeValue.replace(k, UI_EN[k]).replace(/^\s+$/, "");   // 公开站角标英文太长：只留「← SHANGHAI CITY AGENT」
   }
   document.querySelectorAll("[title]").forEach((e) => { if (UI_EN[e.title]) e.title = UI_EN[e.title]; });
 }
