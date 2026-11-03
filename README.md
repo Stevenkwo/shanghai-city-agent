@@ -9,6 +9,7 @@
 | 地点 | 城市 | 更新 |
 |---|---|---|
 | [中信广场东南](https://stevenkwo.github.io/shanghai-city-agent/citic-plaza-se/) | 上海 · 虹口 | 2026-11-03 |
+| [悉尼·达令港](https://stevenkwo.github.io/shanghai-city-agent/sydney-darling-harbour/) | 悉尼 · 澳大利亚 | 2026-11-03 |
 
 ## 数据与口径
 
