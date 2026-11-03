@@ -513,16 +513,55 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const fmt = (n) => Number(n).toLocaleString("en-US");
 // 站名 / 线名：中文站名加「站」、数字线号写「N 号线」；境外英文站名（Pyrmont Bay）、字母线号（T1、L2）照原样
 const stn = (n) => (/[一-鿿]/.test(n) ? `${n}站` : n);
-const lineName = (r) => (/^\d+$/.test(r) ? `${r} 号线` : `${r} 线`);
+const lineName = (r) => (EN ? (/^\d+$/.test(r) ? `Line ${r}` : r) : /^\d+$/.test(r) ? `${r} 号线` : `${r} 线`);
 // 高德路况、CMAB 只覆盖中国；境外地点（悉尼…）不发本机实时请求、不列 CMAB。用没用看体块的高度来源统计
 const IN_CN = D.center[0] > 72 && D.center[0] < 137.9 && D.center[1] > 0.8 && D.center[1] < 55.9;
 const SRC_N = D.stats.source || {}, N_ALL = Object.values(SRC_N).reduce((a, b) => a + b, 0) || 1;
 const usedGf = (SRC_N["3D-GloBFP 估"] || 0) > 0, usedCmab = (SRC_N["CMAB 估"] || 0) > 0, HAS_OVR = (D.overrides || []).length > 0;
 const estPct = Math.round(((SRC_N["3D-GloBFP 估"] || 0) + (SRC_N["CMAB 估"] || 0)) / N_ALL * 100);
 const ESTS = [usedGf && "3D-GloBFP", usedCmab && "CMAB"].filter(Boolean).join(" / ");
+// 境外地点出英文页（1103 用户：海外就都改成英文版）：界面字写 L(中, 英)；数据里的中文分类名（子类、路级、图例键）显示时过 tr()，数据本身不动
+const EN = !IN_CN;
+const L = (zh, en) => (EN ? en : zh);
+const pl = (n, w) => `${fmt(n)} ${w}${n === 1 ? "" : "s"}`;
+const VOC = {
+  "购物中心": "Shopping centre", "专业市场": "Specialty market", "超市": "Supermarket", "菜市场": "Fresh market", "文娱": "Entertainment", "商办": "Office",
+  "中学": "Secondary school", "小学": "Primary school", "中小学": "K–12 school", "幼儿园": "Kindergarten", "高校": "University", "其他（培训等）": "Other (tutoring etc.)", "学校": "School",
+  "医院": "Hospital", "社区卫生服务中心": "Community health centre", "门诊部": "Outpatient clinic", "诊所 / 门诊": "Clinic",
+  "公园绿地": "Park", "滨水": "Waterfront", "历史地标": "Historic landmark", "文博": "Museum / gallery", "观景点": "Lookout",
+  "快速路": "Motorway", "主干路": "Arterial road", "次干路": "Collector road", "支路": "Local street", "慢行路": "Footpath / cycleway",
+  "居住": "Residential", "办公": "Office", "商服": "Retail / services", "公服": "Civic", "工业": "Industrial", "其他": "Other", "未知": "Unknown",
+  "无高度": "No height", "1985 年前（下限）": "Before 1985 (lower bound)", "2021 年后": "2021 or later", "在建": "Under construction",
+  "人工校正（有出处）": "Manual correction (sourced)", "OSM 标注高度": "OSM height tag", "OSM 三维部件": "OSM 3D parts", "OSM 层数×3.2 m": "OSM levels × 3.2 m",
+  "影像测高": "Imagery height", "3D-GloBFP 估": "3D-GloBFP estimate", "CMAB 估": "CMAB estimate",
+  "OSM 标注": "OSM tag", "CMAB 估（GAIA 反推，≤1985 为下限）": "CMAB estimate (from GAIA; ≤1985 is a lower bound)",
+};
+const tr = (s) => (EN && VOC[s] != null ? VOC[s] : s);
+// 静态界面字（页签、标题、按钮、提示）：英文页开场换一遍；公开站「← 上海城市智能体」那句（build.py 换进来的）也在这里
+const UI_EN = {
+  "SITE MODEL · 场地模型": "SITE MODEL", "← 上海城市智能体": "← Shanghai City Agent", "· 场地模型": "· SITE MODEL", "回到首页": "Back to home",
+  "周边配套": "Amenities", "体块": "Massing", "交通": "Transport", "全部": "All", "清空": "None", "NEAREST · 最近一处": "NEAREST",
+  "MASSING · 体块着色（半透明）": "MASSING · COLOUR BY", "高度": "Height", "功能": "Use", "年代": "Era", "来源": "Source",
+  "MODEL · 车流推算": "MODEL · TRAFFIC (ESTIMATED)",
+  "由路网 + 周边建面 + 时段系数推算，不是实测；参数与出处见附带报告。": "Estimated from the road network, nearby floor area and time-of-day factors, not measured. Parameters and sources are in the accompanying report.",
+  "MODEL · 人流来向（推算，未核验）": "MODEL · PEDESTRIAN APPROACH (ESTIMATED, UNVERIFIED)",
+  "按地铁站、公交站与周边大体量商办的步行最短路推算，权重为假设，没有实测客流可核对，只看方向结构、不看绝对量。": "Estimated from shortest walking paths from stations, bus stops and large commercial buildings nearby. The weights are assumptions with no measured footfall to check against: read the directions, not the volumes.",
+  "ROADS · 圈内路网（OSM）": "ROADS · WITHIN RADIUS (OSM)", "DATA · 数据与口径": "DATA · SOURCES & METHODS",
+  "收起 / 展开面板": "Collapse / expand panel", "复位": "Reset", "打印": "Print", "回正北": "Reset to north",
+};
+if (EN) {
+  document.documentElement.lang = "en";
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = w.nextNode());) {
+    if (n.parentElement.tagName === "SCRIPT") continue;       // 数据块动辄十几 MB，不碰
+    const k = n.nodeValue.trim();
+    if (UI_EN[k]) n.nodeValue = n.nodeValue.replace(k, UI_EN[k]);
+  }
+  document.querySelectorAll("[title]").forEach((e) => { if (UI_EN[e.title]) e.title = UI_EN[e.title]; });
+}
 
 // —— 五类配套：名称 + 色 ——
-const CAT = { metro: ["地铁站", "#4f8dff"], biz: ["商业", "#ff8a3d"], edu: ["学校", "#b392ff"], park: ["景观", "#3ddc97"], med: ["医院", "#ff5d6c"] };
+const CAT = { metro: [L("地铁站", "Transit"), "#4f8dff"], biz: [L("商业", "Commerce"), "#ff8a3d"], edu: [L("学校", "Schools"), "#b392ff"], park: [L("景观", "Leisure"), "#3ddc97"], med: [L("医院", "Health"), "#ff5d6c"] };
 const ORDER = ["metro", "biz", "edu", "park", "med"];
 const catColor = ["match", ["coalesce", ["get", "cat"], ""], ...ORDER.flatMap((k) => [k, CAT[k][1]]), "#7cc8ff"];
 // 商业里的「商办」（写字楼为主）压暗一档，和零售 / 文娱分开读
@@ -544,7 +583,14 @@ const PAL = {
   era: [["1985 年前（下限）", "#9a6e4a"], ["1986–1999", "#c99257"], ["2000–2009", "#e6c58f"], ["2010–2020", "#5f9cf5"], ["2021 年后", "#29d3ff"], ["在建", "#ff6a1a"], ["未知", "#3a434f"]],
   source: [["人工校正（有出处）", "#ff8a3d"], ["OSM 标注高度", "#e9eef4"], ["OSM 三维部件", "#e9eef4"], ["OSM 层数×3.2 m", "#a5b2c0"], ["影像测高", "#4f8dff"], ["3D-GloBFP 估", "#5d7fa8"], ["CMAB 估", "#4a5562"], ["无高度", "#2a313b"]],
 };
-const NOTE = {   // 上海（有 CMAB、有校正表）的说法不变；境外按实际用到的数据源写
+const NOTE = EN ? {   // 英文页（境外）：同样按实际用到的数据源写
+  height: `Colour = height. OSM tags first${ESTS ? `; gaps are filled with ${ESTS} estimates` : " (no remote-sensing estimates here)"}${HAS_OVR ? "; landmarks are corrected from public sources" : ""}.`,
+  function: usedCmab ? "Use comes from the CMAB building with the largest overlap (a model estimate); landmarks follow the correction table."
+    : `Use comes from the OSM building tag (residential / office / retail / civic / industrial...); untagged buildings are "Unknown".`,
+  era: usedCmab ? `Era: correction-table completion year > OSM tag > CMAB. CMAB years are inferred from satellite impervious surface (when the plot was built up, not the age of today's building); "Before 1985" is only a lower bound.`
+    : `Era: OSM construction-date tags only (no CMAB here), so most buildings are "Unknown".`,
+  source: `Where each height comes from: measured (OSM tags${HAS_OVR ? " / corrections" : ""}) versus estimated (${ESTS || "none"}).`,
+} : {   // 上海（有 CMAB、有校正表）的说法不变；境外按实际用到的数据源写
   height: `体块颜色 = 高度。OSM 标注优先，缺的用 ${ESTS || "遥感估高（这里没有）"} 估${HAS_OVR ? "，地标按公开资料校正" : ""}。`,
   function: usedCmab ? "功能取最大重叠的 CMAB 楼（模型估计）；地标按校正表。" : "功能取 OSM 的 building 标签（住宅 / 办公 / 商业 / 公建 / 工业…），没写的记「未知」。",
   era: usedCmab ? "年代：校正表竣工年 > OSM 标注 > CMAB。CMAB 年份是卫星不透水面反推的「这块地何时成片建成」，不是现楼楼龄；「1985 年前」只是下限。"
@@ -582,11 +628,13 @@ for (let a = 0; a < 360; a += 5) {
 
 // —— 面板：标题与 KPI ——
 const S = D.poiSum, M0 = S.metro;
-$("title").textContent = D.label;
+$("title").textContent = EN ? D.labelEn || D.label : D.label;
 $("date").textContent = D.date;
-$("coord").textContent = `${D.center[1].toFixed(5)}°N  ${D.center[0].toFixed(5)}°E · WGS-84`;
+// 经纬度读数：南半球写 °S、西半球写 °W（1104 悉尼页出过「−33.86755°N」）
+const latS = (y) => `${Math.abs(y).toFixed(5)}°${y < 0 ? "S" : "N"}`, lonS = (x) => `${Math.abs(x).toFixed(5)}°${x < 0 ? "W" : "E"}`;
+$("coord").textContent = `${latS(D.center[1])}  ${lonS(D.center[0])} · WGS-84`;
 const RSEL = RADIUS_PAGES ? Object.keys(RADIUS_PAGES).map(Number).sort((a, b) => a - b) : RADII;
-$("rsel").innerHTML = RSEL.map((r) => `<button data-r="${r}" class="${r === R ? "on" : ""}" title="分析半径 ${fmtR(r)}">${fmtR(r).toUpperCase()}</button>`).join("");
+$("rsel").innerHTML = RSEL.map((r) => `<button data-r="${r}" class="${r === R ? "on" : ""}" title="${L("分析半径", "Analysis radius")} ${fmtR(r)}">${fmtR(r).toUpperCase()}</button>`).join("");
 $("rsel").hidden = RSEL.length < 2;
 // 换半径 = 换一份数据：写进地址（连同当前页签）再重载；拆页时跳到那一档的页
 document.querySelectorAll("#rsel button").forEach((b) => b.onclick = () => {
@@ -596,11 +644,15 @@ document.querySelectorAll("#rsel button").forEach((b) => b.onclick = () => {
   location.hash = h;
   location.reload();
 });
-$("kpis").innerHTML = [
+$("kpis").innerHTML = (EN ? [
+  [M0.n, "", `${M0.n === 1 ? "station" : "stations"} · ${pl(M0.lines.length, "line")}`],
+  [M0.near ? M0.near.wm : "—", "min", "walk to nearest station (est.)"],
+  [fmt(D.nBld), "", "buildings in radius"],
+] : [
   [M0.n, "站", `地铁站 · ${M0.lines.length} 条线`],
   [M0.near ? M0.near.wm : "—", "分钟", "步行到最近地铁（估）"],
   [fmt(D.nBld), "栋", "圈内建筑"],
-].map(([v, u, t]) => `<div class="kpi"><b>${v}<small>${u}</small></b><span>${t}</span></div>`).join("");
+]).map(([v, u, t]) => `<div class="kpi"><b>${v}<small>${u}</small></b><span>${t}</span></div>`).join("");
 
 // 同类里先排代表性子类、再按距离 —— 默认只给前几名挂名字，放大才全显
 for (const k of ORDER) {
@@ -611,33 +663,36 @@ for (const k of ORDER) {
 const counts = { metro: M0.n, biz: S.biz.n, edu: S.edu.n, park: S.park.n, med: S.med.n };
 const expanded = new Set();
 
-const fmtArea = (m2) => (m2 >= 1e4 ? `${(m2 / 1e4).toFixed(1)} 万㎡` : `${Math.round(m2).toLocaleString("en-US")} ㎡`);
+const fmtArea = (m2) => (EN ? `${fmt(Math.round(m2))} m²` : m2 >= 1e4 ? `${(m2 / 1e4).toFixed(1)} 万㎡` : `${Math.round(m2).toLocaleString("en-US")} ㎡`);
+// 英文页的大面积写 152k m² / 4.48M m²（中文页是「万㎡」）
+const kM2 = (m2) => (m2 >= 1e6 ? `${(m2 / 1e6).toFixed(2)}M` : m2 >= 1e3 ? `${fmt(Math.round(m2 / 1e3))}k` : fmt(Math.round(m2)));
 // —— 悬停色块：体量卡 ——
 function volHtml(k) {
   const c = CAT[k][1], V = D.vol[k], VB = D.volBands;
-  const BL = [`${fmtR(VB[0])} 内`, ...VB.slice(1).map((b, i) => `${fmtR(VB[i])}–${fmtR(b)}`), `${fmtR(VB[VB.length - 1])}–${RL}`];
+  const BL = [L(`${fmtR(VB[0])} 内`, `< ${fmtR(VB[0])}`), ...VB.slice(1).map((b, i) => `${fmtR(VB[i])}–${fmtR(b)}`), `${fmtR(VB[VB.length - 1])}–${RL}`];
   const bandOf = (d) => VB.filter((b) => d > b).length;
   const bars = (vals, fmt) => { const mx = Math.max(...vals, 1e-9); return vals.map((v, i) => `<div class="bd"><span>${BL[i]}</span><i style="width:${(v / mx * 100).toFixed(0)}%"></i><span>${fmt(v)}</span></div>`).join(""); };
   const li = (a, b, d) => `<div class="li"><span>${a}</span><span>${b}</span><span>${d}</span></div>`;
-  let h = `<div class="k">${CAT[k][0]} · ${RL.toUpperCase()} 内体量</div>`;
+  let h = `<div class="k">${L(`${CAT[k][0]} · ${RL.toUpperCase()} 内体量`, `${CAT[k][0]} · WITHIN ${RL.toUpperCase()}`)}</div>`;
   if (k === "metro") {
     const st = D.stations.filter((s) => s.in);
-    h += `<div class="big"><b>${M0.n}</b><small>站 · ${M0.lines.length} 条线 · ${M0.ex} 个出入口</small></div>`
-      + `<h4>按距离</h4>` + bars(BL.map((_, i) => st.filter((s) => bandOf(s.d) === i).length), (v) => `${v} 站`)
-      + `<h4>各站 · 直线 · 步行</h4>` + st.map((s) => li(`${esc(stn(s.n))} ${s.lines.map(lineBadge).join("")}`, `${s.d} m`, `${s.wm ?? "—"} 分`)).join("");
+    h += `<div class="big"><b>${M0.n}</b><small>${L(`站 · ${M0.lines.length} 条线 · ${M0.ex} 个出入口`, `${M0.n === 1 ? "station" : "stations"} · ${pl(M0.lines.length, "line")} · ${pl(M0.ex, "entrance")}`)}</small></div>`
+      + `<h4>${L("按距离", "By distance")}</h4>` + bars(BL.map((_, i) => st.filter((s) => bandOf(s.d) === i).length), (v) => L(`${v} 站`, `${v}`))
+      + `<h4>${L("各站 · 直线 · 步行", "Stations · distance · walk")}</h4>` + st.map((s) => li(`${esc(stn(s.n))} ${s.lines.map(lineBadge).join("")}`, `${s.d} m`, `${s.wm ?? "—"} ${L("分", "min")}`)).join("");
   } else if (k === "park") {
     const ps = D.poi.filter((p) => p.cat === "park" && !p.out && p.sub === "公园绿地" && p.ha).sort((a, b) => b.ha - a.ha);
     const nh = D.poi.filter((p) => p.cat === "park" && !p.out && (p.sub === "历史地标" || p.sub === "文博")).length;
-    h += `<div class="big"><b>${V.ha}</b><small>ha 公园绿地</small></div><div class="sub">另有滨水 ${S.park.water.length} 处、历史地标与文博 ${nh} 处</div>`
-      + `<h4>按距离</h4>` + bars(V.ha_bands, (v) => `${v.toFixed(1)} ha`)
-      + `<h4>各处面积 · 距离</h4>` + ps.slice(0, 6).map((p) => li(esc(p.n), `${p.ha} ha`, `${p.d} m`)).join("");
+    h += `<div class="big"><b>${V.ha}</b><small>${L("ha 公园绿地", "ha of parks")}</small></div><div class="sub">${L(`另有滨水 ${S.park.water.length} 处、历史地标与文博 ${nh} 处`, [S.park.water.length && `${S.park.water.length} waterfront`, nh && `${nh} historic / museum`].filter(Boolean).join(" and ").replace(/.+/, "plus $& sites"))}</div>`
+      + `<h4>${L("按距离", "By distance")}</h4>` + bars(V.ha_bands, (v) => `${v.toFixed(1)} ha`)
+      + `<h4>${L("各处面积 · 距离", "Largest parks · distance")}</h4>` + ps.slice(0, 6).map((p) => li(esc(p.n), `${p.ha} ha`, `${p.d} m`)).join("");
   } else {
     const fs = D.poi.filter((p) => p.cat === k && !p.out && p.gfa).sort((a, b) => b.gfa - a.gfa);
-    const subs = Object.entries(V.sub).map(([n, v]) => `${n} ${(v / 1e4).toFixed(1)}`).join(" · ");
-    h += `<div class="big"><b>${(V.gfa / 1e4).toFixed(1)}</b><small>万㎡ 建筑面积（估）· ${V.nb} 栋</small></div><div class="sub">${esc(subs)}${k === "edu" ? ` · 校园用地 ${V.campus_ha} ha` : ""}</div>`
-      + `<h4>按距离</h4>` + bars(V.bands, (v) => `${(v / 1e4).toFixed(1)} 万㎡`)
-      + `<h4>体量前 ${Math.min(6, fs.length)} · 距离</h4>` + fs.slice(0, 6).map((p) => li(esc(p.n), fmtArea(p.gfa), `${p.d} m`)).join("")
-      + `<div class="nt">估：占地 × 层数，层数 = 高度 ÷ 层高（商业 5 m、商办 4 m、学校 3.9 m、医院 4.2 m）。塔楼和裙房画成一个轮廓的会按塔楼高度算满，数会偏大；只按 OSM 标签归类、没对上具体设施的楼计入总数不进排名（${fmtArea(V.other)}）。</div>`;
+    const subs = Object.entries(V.sub).map(([n, v]) => (EN ? `${tr(n)} ${kM2(v)}` : `${n} ${(v / 1e4).toFixed(1)}`)).join(" · ");
+    h += `<div class="big"><b>${EN ? kM2(V.gfa) : (V.gfa / 1e4).toFixed(1)}</b><small>${L(`万㎡ 建筑面积（估）· ${V.nb} 栋`, `m² floor area (est.) · ${pl(V.nb, "building")}`)}</small></div><div class="sub">${esc(subs)}${k === "edu" ? L(` · 校园用地 ${V.campus_ha} ha`, ` · campus land ${V.campus_ha} ha`) : ""}</div>`
+      + `<h4>${L("按距离", "By distance")}</h4>` + bars(V.bands, (v) => (EN ? `${kM2(v)} m²` : `${(v / 1e4).toFixed(1)} 万㎡`))
+      + `<h4>${L(`体量前 ${Math.min(6, fs.length)} · 距离`, `Top ${Math.min(6, fs.length)} by floor area · distance`)}</h4>` + fs.slice(0, 6).map((p) => li(esc(p.n), fmtArea(p.gfa), `${p.d} m`)).join("")
+      + `<div class="nt">${L(`估：占地 × 层数，层数 = 高度 ÷ 层高（商业 5 m、商办 4 m、学校 3.9 m、医院 4.2 m）。塔楼和裙房画成一个轮廓的会按塔楼高度算满，数会偏大；只按 OSM 标签归类、没对上具体设施的楼计入总数不进排名（${fmtArea(V.other)}）。`,
+        `Estimate: footprint × floors, where floors = height ÷ floor height (retail 5 m, office 4 m, school 3.9 m, hospital 4.2 m). A tower drawn as one outline with its podium is counted at full tower height, so figures run high. Buildings classified only by OSM tag and not matched to a specific facility count towards the total but not the ranking (${fmtArea(V.other)}).`)}</div>`;
   }
   return h;
 }
@@ -684,31 +739,31 @@ function renderPoiPanel() {
     const c = CAT[k][1];
     if (k === "metro") {
       const n = M0.near, st = n && stByName(n.n);
-      if (n) q.push(`<div class="q" style="--c:${c}" data-st="${esc(n.n)}"><i></i><span class="t">地铁站 · 最近</span><span class="v">${n.wm ?? "—"}<small>分</small><u>${n.d} m</u></span><span class="n">${esc(stn(n.n))}${st ? st.lines.map(lineBadge).join("") : ""}</span></div>`);
+      if (n) q.push(`<div class="q" style="--c:${c}" data-st="${esc(n.n)}"><i></i><span class="t">${L("地铁站 · 最近", "Station · nearest")}</span><span class="v">${n.wm ?? "—"}<small>${L("分", "min")}</small><u>${n.d} m</u></span><span class="n">${esc(stn(n.n))}${st ? st.lines.map(lineBadge).join("") : ""}</span></div>`);
     } else {
       const n = S[k].near;
-      if (n) q.push(`<div class="q" style="--c:${c}" data-id="${n.id}"><i></i><span class="t">${CAT[k][0]} · 最近${esc(n.sub)}</span><span class="v">${n.wm ?? "—"}<small>分</small><u>${n.d} m</u></span><span class="n">${esc(n.n)}</span></div>`);
+      if (n) q.push(`<div class="q" style="--c:${c}" data-id="${n.id}"><i></i><span class="t">${CAT[k][0]} · ${L(`最近${esc(n.sub)}`, `nearest ${esc(tr(n.sub).toLowerCase())}`)}</span><span class="v">${n.wm ?? "—"}<small>${L("分", "min")}</small><u>${n.d} m</u></span><span class="n">${esc(n.n)}</span></div>`);
     }
   }
-  $("quick").innerHTML = q.join("") || `<p class="note">点上方类别，地图上即时显示。</p>`;
-  const hd = `<div class="it hd"><span>名称</span><span>直线</span><span>步行</span></div>`;
+  $("quick").innerHTML = q.join("") || `<p class="note">${L("点上方类别，地图上即时显示。", "Pick a category above to show it on the map.")}</p>`;
+  const hd = `<div class="it hd"><span>${L("名称", "Name")}</span><span>${L("直线", "Distance")}</span><span>${L("步行", "Walk")}</span></div>`;
   let g = "";
   for (const k of ORDER) {
     if (!active.has(k)) continue;
     const c = CAT[k][1];
     if (k === "metro") {
-      g += `<div class="grp" style="--c:${c}"><div class="gh"><b>地铁站</b><span class="cnt">${M0.n}</span><span class="t">${RL} 内 · ${M0.lines.length} 条线 · ${M0.ex} 个出入口</span></div>${hd}`
-        + D.stations.map((s) => `<div class="it ${s.in ? "" : "out"}" data-st="${esc(s.n)}"><span class="nm">${esc(stn(s.n))}${s.lines.map(lineBadge).join("")}${s.in ? "" : '<span class="sb">圈外</span>'}</span><span class="dm">${s.d} m</span><span class="wk">${s.wm ?? "—"} 分</span></div>`).join("") + `</div>`;
+      g += `<div class="grp" style="--c:${c}"><div class="gh"><b>${CAT.metro[0]}</b><span class="cnt">${M0.n}</span><span class="t">${L(`${RL} 内 · ${M0.lines.length} 条线 · ${M0.ex} 个出入口`, `within ${RL} · ${pl(M0.lines.length, "line")} · ${pl(M0.ex, "entrance")}`)}</span></div>${hd}`
+        + D.stations.map((s) => `<div class="it ${s.in ? "" : "out"}" data-st="${esc(s.n)}"><span class="nm">${esc(stn(s.n))}${s.lines.map(lineBadge).join("")}${s.in ? "" : `<span class="sb">${L("圈外", "outside")}</span>`}</span><span class="dm">${s.d} m</span><span class="wk">${s.wm ?? "—"} ${L("分", "min")}</span></div>`).join("") + `</div>`;
       continue;
     }
     const xs = D.poi.filter((p) => p.cat === k && !p.out);
     const lim = expanded.has(k) ? xs.length : 8;
-    const extra = k === "park" ? ` · 公园绿地 ${S.park.ha} ha` : "";
-    const lg = k === "biz" ? `<div class="lg"><span><i style="background:${c}"></i>零售 · 市场 · 文娱</span><span><i style="background:${OFFICE}"></i>商办（写字楼）</span></div>` : "";
-    g += `<div class="grp" style="--c:${c}"><div class="gh"><b>${CAT[k][0]}</b><span class="cnt">${xs.length}</span><span class="t">${RL} 内${extra}</span></div>`
-      + `<div class="pills">${S[k].by.map(([sb, n]) => `<span class="pill">${esc(sb)} ${n}</span>`).join("")}</div>${lg}${hd}`
-      + xs.slice(0, lim).map((p) => `<div class="it" data-id="${p.id}"><span class="nm">${esc(p.n)}<span class="sb">${esc(p.sub)}</span></span><span class="dm">${p.d} m</span><span class="wk">${p.wm ?? "—"} 分</span></div>`).join("")
-      + (xs.length > 8 ? `<span class="more" data-more="${k}">${expanded.has(k) ? "收起 ▲" : `展开全部 ${xs.length} ▼`}</span>` : "") + `</div>`;
+    const extra = k === "park" ? ` · ${L("公园绿地", "parks")} ${S.park.ha} ha` : "";
+    const lg = k === "biz" ? `<div class="lg"><span><i style="background:${c}"></i>${L("零售 · 市场 · 文娱", "Retail · markets · entertainment")}</span><span><i style="background:${OFFICE}"></i>${L("商办（写字楼）", "Office")}</span></div>` : "";
+    g += `<div class="grp" style="--c:${c}"><div class="gh"><b>${CAT[k][0]}</b><span class="cnt">${xs.length}</span><span class="t">${L(`${RL} 内`, `within ${RL}`)}${extra}</span></div>`
+      + `<div class="pills">${S[k].by.map(([sb, n]) => `<span class="pill">${esc(tr(sb))} ${n}</span>`).join("")}</div>${lg}${hd}`
+      + xs.slice(0, lim).map((p) => `<div class="it" data-id="${p.id}"><span class="nm">${esc(p.n)}<span class="sb">${esc(tr(p.sub))}</span></span><span class="dm">${p.d} m</span><span class="wk">${p.wm ?? "—"} ${L("分", "min")}</span></div>`).join("")
+      + (xs.length > 8 ? `<span class="more" data-more="${k}">${expanded.has(k) ? L("收起 ▲", "Show less ▲") : L(`展开全部 ${xs.length} ▼`, `Show all ${xs.length} ▼`)}</span>` : "") + `</div>`;
   }
   $("groups").innerHTML = g;
   document.querySelectorAll("#quick [data-id], #groups [data-id]").forEach((el) => el.onclick = () => focusPoi(D.poi.find((p) => p.id === +el.dataset.id)));
@@ -717,39 +772,55 @@ function renderPoiPanel() {
 }
 $("allOn").onclick = () => { ORDER.forEach((k) => active.add(k)); applyAll(); };
 $("allOff").onclick = () => { active.clear(); applyAll(); };
-const bj = (iso) => { if (!iso) return "?"; const t = new Date(new Date(iso).getTime() + 8 * 3600e3).toISOString(); return `${t.slice(0, 10)} ${t.slice(11, 16)}`; };
-$("poiNote").textContent = `设施来自 OpenStreetMap（${bj(D.poiAt)} 北京时间），按 OSM 标签归类；无名设施只画范围、不计数，小型诊所、培训机构、底商可能未收录。步行 = OSM 路网最短路 ÷ 80 m/分钟，起点为分析点，属估算（不含过街等候与小区门禁）。`;
+// 取数时刻：中文页按北京时间，英文页写 UTC
+const bj = (iso) => { if (!iso) return "?"; const t = new Date(new Date(iso).getTime() + (EN ? 0 : 8 * 3600e3)).toISOString(); return `${t.slice(0, 10)} ${t.slice(11, 16)}${EN ? " UTC" : ""}`; };
+$("poiNote").textContent = EN
+  ? `Amenities from OpenStreetMap (${bj(D.poiAt)}), classified by OSM tags. Unnamed facilities are drawn as areas but not counted; small clinics, tutoring centres and ground-floor shops may be missing. Walk = shortest path on the OSM network ÷ 80 m/min from the analysis point, an estimate (no waiting at crossings, no detours around gated estates).`
+  : `设施来自 OpenStreetMap（${bj(D.poiAt)} 北京时间），按 OSM 标签归类；无名设施只画范围、不计数，小型诊所、培训机构、底商可能未收录。步行 = OSM 路网最短路 ÷ 80 m/分钟，起点为分析点，属估算（不含过街等候与小区门禁）。`;
 
 // —— 体块图例 ——
 function renderLegend(m) {
   const st = D.stats[m] || {};
   const total = Object.values(st).reduce((a, b) => a + b, 0) || 1;
   $("legend").innerHTML = PAL[m].filter(([k]) => st[k]).map(([k, c]) =>
-    `<div class="row"><i style="background:${c};opacity:${OPACITY};box-shadow:0 0 6px ${c}"></i><span class="lab">${esc(k)}</span><span class="bar"><b style="width:${(st[k] / total * 100).toFixed(1)}%"></b></span><span class="n">${st[k]}</span></div>`).join("");
+    `<div class="row"><i style="background:${c};opacity:${OPACITY};box-shadow:0 0 6px ${c}"></i><span class="lab">${esc(tr(k))}</span><span class="bar"><b style="width:${(st[k] / total * 100).toFixed(1)}%"></b></span><span class="n">${st[k]}</span></div>`).join("");
   $("modeNote").textContent = NOTE[m];
 }
 renderLegend("height");
 const as = D.asOf || {};
-$("massNote").textContent = usedGf || usedCmab
+$("massNote").textContent = EN ? (usedGf || usedCmab
+  ? `Rough massing model: footprints mainly from OSM (${as.osm || "?"}), with c. 2020 remote-sensing footprints filling the gaps; about ${estPct}% of heights are model estimates (click a building to see its source). Not for sunlight, clearance or planning-approval use.`
+  : `Rough massing model: footprints and heights from OSM only (${as.osm || "?"}); buildings with no height or level tag are drawn flat. Not for sunlight, clearance or planning-approval use.`)
+  : usedGf || usedCmab
   ? `粗略版白模：轮廓以 OSM 为主（${as.osm || "?"}），其余用约 2020 年的遥感轮廓补；约 ${estPct}% 的楼高是模型估算，点楼可看每栋的来源。不得作日照、净空、报批依据。`
   : `粗略版白模：轮廓与高度都只用 OSM（${as.osm || "?"}）；OSM 没写高度或层数的楼只画平面。不得作日照、净空、报批依据。`;
-$("roads").innerHTML = Object.entries(D.roadKm).map(([k, v]) => `<span>${esc(k)}</span><span>${v} km</span>`).join("");
-const fills = [usedGf && `3D-GloBFP（${esc(as.globfp || "约 2020")}）`, usedCmab && `CMAB（${esc(as.cmab || "2020-12-31")}）`].filter(Boolean);
-$("notes").innerHTML = [
+$("roads").innerHTML = Object.entries(D.roadKm).map(([k, v]) => `<span>${esc(tr(k))}</span><span>${v} km</span>`).join("");
+const fills = (EN ? [usedGf && "3D-GloBFP (c. 2020 imagery)", usedCmab && `CMAB (${esc(as.cmab || "2020-12-31")})`]
+  : [usedGf && `3D-GloBFP（${esc(as.globfp || "约 2020")}）`, usedCmab && `CMAB（${esc(as.cmab || "2020-12-31")}）`]).filter(Boolean);
+$("notes").innerHTML = (EN ? [
+  `Massing: OSM footprints first (${esc(as.osm || "?")})` + (fills.length ? `, gaps filled with ${fills.join(" / ")}` : ", heights from OSM tags only (no remote-sensing heights)") + (HAS_OVR ? `; ${D.overrides.length} manual corrections, each sourced below` : "") + ".",
+  `Amenities: fetched from OpenStreetMap (${bj(D.poiAt)}). Stations, entrances and lines also come from OSM; line colours are the official ones${/train/.test(D.metroSrc || "") ? `; "Transit" covers train, metro and light-rail stations` : ""}.`,
+  "Walking distance: shortest path on the OSM network (no motorways) at 80 m/min, from the analysis point to the network point nearest each facility's boundary. Estimates.",
+  "© OpenStreetMap contributors (ODbL)" + (usedGf ? " · 3D-GloBFP (CC BY 4.0)" : "") + (usedCmab ? " · CMAB (CC BY 4.0)" : ""),
+] : [
   `白模：OSM 轮廓优先（${esc(as.osm || "?")}）` + (fills.length ? `＋ ${fills.join("／")}补` : "，高度只用 OSM 标注（没有遥感补高）") + (HAS_OVR ? `，人工校正 ${D.overrides.length} 条（逐条出处见下）` : "") + "。",
   `周边配套：OpenStreetMap 现取（${bj(D.poiAt)}）。地铁站、出入口、线路同为 OSM，线色为官方色${/train/.test(D.metroSrc || "") ? "；「地铁站」含火车、地铁与轻轨站" : ""}。`,
   "步行距离：OSM 路网最短路（不走快速路），80 m/分钟；起点为分析点，终点为设施边界最近的路网点。估算值。",
   ...(IN_CN ? ["公开版不含高德数据：实时路况、路况快照与官方路况截图只在本机版；高德 POI、控规地块也不进本文件。"] : []),
   "© OpenStreetMap contributors（ODbL）" + (usedGf ? " · 3D-GloBFP（CC BY 4.0）" : "") + (usedCmab ? " · CMAB（CC BY 4.0）" : ""),
-].map((t) => `<p>${t}</p>`).join("");
+]).map((t) => `<p>${t}</p>`).join("");
 document.querySelector(".hud-br").textContent = "© OpenStreetMap contributors" + (usedGf ? " · 3D-GloBFP" : "") + (usedCmab ? " · CMAB" : "");
-$("ovr").innerHTML = D.overrides.map((o) => `<li><b>${esc(o.n)}</b>：${esc(o.t || "")}${o.u ? ` · <a href="${esc(o.u)}" target="_blank" rel="noopener">出处</a>` : ""}</li>`).join("");
+$("ovr").innerHTML = D.overrides.map((o) => `<li><b>${esc(o.n)}</b>${L("：", ": ")}${esc(o.t || "")}${o.u ? ` · <a href="${esc(o.u)}" target="_blank" rel="noopener">${L("出处", "source")}</a>` : ""}</li>`).join("");
 
 // —— 地图 ——
 const LINE_W = { "快速路": 3.2, "主干路": 2.4, "次干路": 1.7, "支路": 1.1, "慢行路": 0.6 };
 const LINE_C = { "快速路": "#5d6e82", "主干路": "#4f6074", "次干路": "#3d4b5c", "支路": "#2c3644", "慢行路": "#212a35" };
 const roadWidth = (k) => ["interpolate", ["exponential", 1.6], ["zoom"], 13, ["*", ["match", ["get", "c"], ...Object.entries(LINE_W).flat(), 1], 0.5], 18, ["*", ["match", ["get", "c"], ...Object.entries(LINE_W).flat(), 1], k]];
 const FC = (features) => ({ type: "FeatureCollection", features });
+// 共线段并排：bi 序号、bn 条数（导出时拆好）；并排时每条细一点，间距 2.9 px，整束以原线为中轴
+const RAIL_BN = ["coalesce", ["get", "bn"], 1];
+const RAIL_W = (w) => ["case", [">", RAIL_BN, 1], 2.4, w];
+const RAIL_OFF = ["*", ["-", ["coalesce", ["get", "bi"], 0], ["/", ["-", RAIL_BN, 1], 2]], 2.9];
 const style = {
   version: 8,
   sources: {
@@ -794,12 +865,13 @@ const style = {
     { id: "ped", type: "line", source: "ped", layout: { "line-cap": "round", visibility: "none" },
       paint: { "line-color": "#ff8a3d", "line-opacity": 0.85, "line-width": 2 } },
     { id: "rail-other", type: "line", source: "rails", filter: ["!=", ["get", "metro"], true], paint: { "line-color": "#3a4350", "line-width": 0.8 } },
-    { id: "rail-glow", type: "line", source: "rails", filter: ["==", ["get", "metro"], true],
+    // 光晕每段只画一次（共线段拆出来的几条叠在一起会过亮）
+    { id: "rail-glow", type: "line", source: "rails", filter: ["all", ["==", ["get", "metro"], true], ["==", ["coalesce", ["get", "bi"], 0], 0]],
       paint: { "line-color": ["coalesce", ["get", "col"], "#4f8dff"], "line-width": 10, "line-blur": 7, "line-opacity": 0.3 } },
     { id: "rail-ug", type: "line", source: "rails", filter: ["all", ["==", ["get", "metro"], true], ["==", ["get", "ug"], true]],
-      paint: { "line-color": ["coalesce", ["get", "col"], "#4f8dff"], "line-width": 2.6, "line-dasharray": [2, 1.4], "line-opacity": 0.95 } },
+      paint: { "line-color": ["coalesce", ["get", "col"], "#4f8dff"], "line-width": RAIL_W(2.6), "line-offset": RAIL_OFF, "line-dasharray": [2, 1.4], "line-opacity": 0.95 } },
     { id: "rail", type: "line", source: "rails", filter: ["all", ["==", ["get", "metro"], true], ["!=", ["get", "ug"], true]],
-      paint: { "line-color": ["coalesce", ["get", "col"], "#4f8dff"], "line-width": 3.2 } },
+      paint: { "line-color": ["coalesce", ["get", "col"], "#4f8dff"], "line-width": RAIL_W(3.2), "line-offset": RAIL_OFF } },
     { id: "rings", type: "line", source: "rings", paint: { "line-color": "#7cc8ff", "line-opacity": ["case", ["==", ["get", "r"], R], 0.6, 0.35], "line-width": ["case", ["==", ["get", "r"], R], 1.3, 0.8], "line-dasharray": [4, 3] } },
     { id: "vrings", type: "line", source: "vrings", paint: { "line-color": ["get", "c"], "line-width": 1.2, "line-dasharray": [3, 3], "line-opacity": 0.85 } },
     { id: "ticks", type: "line", source: "ticks", paint: { "line-color": "#7cc8ff", "line-opacity": ["interpolate", ["linear"], ["get", "l"], 11, 0.25, 46, 0.7], "line-width": 1 } },
@@ -848,7 +920,7 @@ map.on("load", () => {
   // 基地
   const se = document.createElement("div");
   se.className = "mk-site";
-  se.innerHTML = `<span class="ping"></span><span class="ping b"></span><span class="core"></span><span class="lbl">SITE · 基地</span>`;
+  se.innerHTML = `<span class="ping"></span><span class="ping b"></span><span class="core"></span><span class="lbl">${L("SITE · 基地", "SITE")}</span>`;
   addMk(se, siteC);
   // 圈与方位
   const CO = R + 95 * RS;
@@ -865,14 +937,14 @@ map.on("load", () => {
     const c = (s.lines[0] || {}).c || "#4f8dff";
     const el = document.createElement("div");
     el.className = s.in ? "mk-st" : "mk-st out"; el.style.setProperty("--c", c);
-    el.innerHTML = `<span class="ring"></span><span class="tag" style="--c:${c}"><b>${esc(stn(s.n))}</b>${s.lines.map(lineBadge).join("")}<em>${s.wm ?? "—"} 分</em></span>`;
+    el.innerHTML = `<span class="ring"></span><span class="tag" style="--c:${c}"><b>${esc(stn(s.n))}</b>${s.lines.map(lineBadge).join("")}<em>${s.wm ?? "—"} ${L("分", "min")}</em></span>`;
     el.onclick = (e) => { e.stopPropagation(); showSt(s); };
     MK.st.push({ el, s, rk: MK.st.length, m: addMk(el, s.ll) });
     if (!s.in) continue;          // 圈外站不画出入口
     for (const x of s.ex) {
       const e2 = document.createElement("div");
       e2.className = "mk-ex"; e2.style.setProperty("--c", c); e2.textContent = x.ref;
-      e2.title = `${stn(s.n)} ${x.ref} 号口 · 步行约 ${x.w ?? "—"} m`;
+      e2.title = EN ? `${s.n} · entrance${x.ref ? ` ${x.ref}` : ""} · ~${x.w ?? "—"} m walk` : `${stn(s.n)} ${x.ref} 号口 · 步行约 ${x.w ?? "—"} m`;
       MK.ex.push({ el: e2, m: addMk(e2, x.ll) });
     }
   }
@@ -1057,7 +1129,7 @@ document.querySelector(".panel").addEventListener("mouseenter", () => clearTimeo
 document.querySelector(".panel").addEventListener("mouseleave", () => { if (autoOpen) { clearTimeout(hideT); hideT = setTimeout(() => { autoOpen = false; setCollapsed(true); }, 700); } });
 function renderRail() {
   $("rail").innerHTML = ORDER.map((k) => `<div class="rc ${active.has(k) ? "on" : ""}" data-k="${k}" style="--c:${CAT[k][1]}"><b>${counts[k]}</b><span>${CAT[k][0]}</span></div>`).join("")
-    + `<div class="rc open" title="展开面板">›</div>`;
+    + `<div class="rc open" title="${L("展开面板", "Expand panel")}">›</div>`;
   document.querySelectorAll("#rail [data-k]").forEach((el) => el.onclick = () => {
     const k = el.dataset.k;
     if (tab !== "poi") setTab("poi");
@@ -1081,22 +1153,27 @@ function hud() {
   $("camTxt").textContent = `Z ${map.getZoom().toFixed(1)} · PITCH ${map.getPitch().toFixed(0)}° · BRG ${((map.getBearing() % 360 + 360) % 360).toFixed(0)}°`;
 }
 map.on("move", hud);
-map.on("mousemove", (e) => { $("cur").textContent = `${e.lngLat.lat.toFixed(5)}°N ${e.lngLat.lng.toFixed(5)}°E`; });
+map.on("mousemove", (e) => { $("cur").textContent = `${latS(e.lngLat.lat)} ${lonS(e.lngLat.lng)}`; });
 
 // —— 详情卡 ——
 const kv = (rows) => `<div class="kv">${rows.map(([a, b]) => `<span>${a}</span><span>${esc(b)}</span>`).join("")}</div>`;
 function card(html, c) { $("card").style.setProperty("--c", c || "#7cc8ff"); $("cardBody").innerHTML = html; $("card").style.display = "block"; declutter(); }
 function showPoi(p) {
   const [t, id] = p.osm.split("/");
-  card(`<div class="k">${CAT[p.cat][0]} · ${esc(p.sub)}</div><h3>${esc(p.n)}</h3>`
-    + kv([["直线距离", `${p.d} m`], ["步行（估）", p.w != null ? `${p.w} m · 约 ${p.wm} 分钟` : "—"], ["范围", p.area ? "有边界" : "点位"]])
-    + `<div class="src">OpenStreetMap ${esc(p.osm)} · <a href="https://www.openstreetmap.org/${t}/${id}" target="_blank" rel="noopener">查看原始数据</a></div>`, CAT[p.cat][1]);
+  card(`<div class="k">${CAT[p.cat][0]} · ${esc(tr(p.sub))}</div><h3>${esc(p.n)}</h3>`
+    + kv(EN ? [["Distance", `${p.d} m`], ["Walk (est.)", p.w != null ? `${p.w} m · ~${p.wm} min` : "—"], ["Extent", p.area ? "Mapped area" : "Point"]]
+      : [["直线距离", `${p.d} m`], ["步行（估）", p.w != null ? `${p.w} m · 约 ${p.wm} 分钟` : "—"], ["范围", p.area ? "有边界" : "点位"]])
+    + `<div class="src">OpenStreetMap ${esc(p.osm)} · <a href="https://www.openstreetmap.org/${t}/${id}" target="_blank" rel="noopener">${L("查看原始数据", "View in OSM")}</a></div>`, CAT[p.cat][1]);
 }
 function showSt(s) {
   const c = (s.lines[0] || {}).c;
-  card(`<div class="k">地铁站 · ${s.lines.map((l) => lineName(l.r)).join(" / ")}</div><h3>${esc(stn(s.n))}${s.lines.map(lineBadge).join("")}</h3>`
-    + kv([["直线距离", `${s.d} m`], ["步行（估）", s.w != null ? `${s.w} m · 约 ${s.wm} 分钟` : "—"], ["出入口", s.ex.length ? s.ex.map((x) => x.ref).sort((a, b) => a.localeCompare(b, "zh", { numeric: true })).join(" · ") : "OSM 未标"]])
-    + `<div class="src">步行量到本站最近的出入口；出入口与站点来自 OpenStreetMap。</div>`, c);
+  // 出入口编号：境外不少站 OSM 只标了点、没写编号 → 写个数
+  const refs = s.ex.map((x) => x.ref).filter(Boolean).sort((a, b) => a.localeCompare(b, "zh", { numeric: true }));
+  const exs = refs.length ? refs.join(" · ") : s.ex.length ? L(`${s.ex.length} 个（OSM 未编号）`, `${s.ex.length} (unnumbered in OSM)`) : L("OSM 未标", "Not mapped in OSM");
+  card(`<div class="k">${L("地铁站", "Station")} · ${s.lines.map((l) => lineName(l.r)).join(" / ")}</div><h3>${esc(stn(s.n))}${s.lines.map(lineBadge).join("")}</h3>`
+    + kv(EN ? [["Distance", `${s.d} m`], ["Walk (est.)", s.w != null ? `${s.w} m · ~${s.wm} min` : "—"], ["Entrances", exs]]
+      : [["直线距离", `${s.d} m`], ["步行（估）", s.w != null ? `${s.w} m · 约 ${s.wm} 分钟` : "—"], ["出入口", exs]])
+    + `<div class="src">${L("步行量到本站最近的出入口；出入口与站点来自 OpenStreetMap。", "Walk is measured to the station's nearest entrance; stations and entrances from OpenStreetMap.")}</div>`, c);
 }
 function focusPoi(p) { if (!p) return; map.flyTo({ center: p.ll, zoom: Math.max(16.2, map.getZoom()), duration: 900, padding: pad() }); showPoi(p); }
 function focusSt(s) { if (!s) return; map.flyTo({ center: s.ll, zoom: Math.max(16.2, map.getZoom()), duration: 900, padding: pad() }); showSt(s); }
@@ -1106,15 +1183,18 @@ map.on("click", (e) => {
   const p = f.properties;
   if (f.layer.id === "poi-fill") {
     const x = D.poi.find((q) => q.id === p.id);
-    if (x) showPoi(x); else card(`<div class="k">${CAT[p.cat][0]} · ${esc(p.sub)}</div><h3>未命名</h3><div class="src">OSM 里这块没有名字，只画范围、不计数。</div>`, CAT[p.cat][1]);
+    if (x) showPoi(x); else card(`<div class="k">${CAT[p.cat][0]} · ${esc(tr(p.sub))}</div><h3>${L("未命名", "Unnamed")}</h3><div class="src">${L("OSM 里这块没有名字，只画范围、不计数。", "No name in OSM: drawn as an area, not counted.")}</div>`, CAT[p.cat][1]);
     return;
   }
-  const rows = [
+  const rows = EN ? [
+    ["Height", p.h ? `${Number(p.h).toFixed(1)} m` : "None (drawn flat)"], ["Height source", tr(p.src)], ["Use", tr(p.fn)],
+    ["Era", p.y ? `${p.y} (${tr(p.era)})` : tr(p.era)], ["Era source", tr(p.ys) || "—"],
+  ] : [
     ["高度", p.h ? `${Number(p.h).toFixed(1)} m` : "无（只画平面）"], ["高度来源", p.src], ["功能", p.fn],
     ["年代", p.y ? `${p.y}（${p.era}）` : p.era], ["年代口径", p.ys || "—"],
   ];
-  if (p.cat) rows.unshift(["配套", `${CAT[p.cat][0]} · ${p.cs}`]);
-  card(`<div class="k">BUILDING · 建筑</div><h3>${esc(p.nm || p.cn || "未命名建筑")}</h3>${kv(rows)}${p.cite ? `<div class="src">出处：${esc(p.cite)}</div>` : ""}`, p.cat ? CAT[p.cat][1] : null);
+  if (p.cat) rows.unshift([L("配套", "Amenity"), `${CAT[p.cat][0]} · ${tr(p.cs)}`]);
+  card(`<div class="k">${L("BUILDING · 建筑", "BUILDING")}</div><h3>${esc(p.nm || p.cn || L("未命名建筑", "Unnamed building"))}</h3>${kv(rows)}${p.cite ? `<div class="src">${L("出处：", "Source: ")}${esc(p.cite)}</div>` : ""}`, p.cat ? CAT[p.cat][1] : null);
 });
 $("cardx").onclick = () => { $("card").style.display = "none"; declutter(); };
 map.on("mousemove", (e) => { map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ["blds", "blds-hl", "poi-fill"] }).length ? "pointer" : ""; });
