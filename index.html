@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>上海城市智能体 · Shanghai City Agent</title>
+<meta name="description" content="we want to see what happened under the city">
+<meta property="og:title" content="上海城市智能体"><meta property="og:description" content="we want to see what happened under the city">
+<meta property="og:image" content="https://stevenkwo.github.io/shanghai-city-agent/citic-plaza-se/preview.jpg"><meta property="og:url" content="https://stevenkwo.github.io/shanghai-city-agent/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><style>
+:root{--bg:#05070a;--glass:rgba(11,16,23,.64);--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.16);--ink:#e9eef4;--ink2:#a5b2c0;--ink3:#6b7886;
+  --num:#ff8a3d;--cyan:#7cc8ff;--f-ui:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;
+  --f-mono:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;--f-num:"DIN Alternate","Bahnschrift","SF Mono",monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 var(--f-ui);-webkit-font-smoothing:antialiased}
+body{min-height:100vh;background:radial-gradient(ellipse 70% 60% at 78% 8%,rgba(124,200,255,.10),transparent 60%),radial-gradient(ellipse 55% 45% at 8% 95%,rgba(255,106,26,.06),transparent 60%),var(--bg)}
+.bgfx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+.wrap{position:relative;max-width:1180px;margin:0 auto;padding:36px 28px 56px}
+header{display:flex;align-items:center;gap:14px}
+header img{width:46px;height:46px}
+header b{display:block;font-size:18px;font-weight:600;letter-spacing:.04em}
+header span{font:600 10.5px var(--f-mono);letter-spacing:.24em;color:var(--cyan)}
+.hero{margin:72px 0 44px}
+.hero .k{font:600 11px var(--f-mono);letter-spacing:.24em;color:var(--ink3)}
+.hero h1{font-size:46px;line-height:1.15;margin:14px 0 16px;font-weight:600;letter-spacing:-.005em;max-width:980px;text-wrap:balance}
+.hero p{color:var(--ink2);max-width:720px;margin:0;font-size:15px}
+h2{font:600 10.5px var(--f-mono);letter-spacing:.22em;color:var(--ink3);display:flex;align-items:center;gap:10px;margin:0 0 14px}
+h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px}
+.card{position:relative;display:block;background:var(--glass);border:1px solid var(--line2);color:inherit;text-decoration:none;overflow:hidden}
+a.card{transition:border-color .2s,transform .2s}
+a.card:hover{border-color:rgba(124,200,255,.6);transform:translateY(-2px)}
+a.card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--cyan);box-shadow:0 0 12px var(--cyan);z-index:2}
+.card img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-bottom:1px solid var(--line)}
+.card .b{padding:14px 16px 16px}
+.card .city{font:600 10.5px var(--f-mono);letter-spacing:.18em;color:var(--cyan)}
+.card h3{margin:6px 0 2px;font-size:20px;font-weight:600}
+.card .sub{color:var(--ink3);font-size:12px}
+.card .kp{display:flex;gap:22px;margin:14px 0 10px}
+.card .kp b{display:block;font:700 22px/1 var(--f-num);color:var(--num);margin-bottom:3px}
+.card .kp span{font-size:11px;color:var(--ink2)}
+.card .m{font:11px var(--f-mono);color:var(--ink3);letter-spacing:.04em}
+.card.soon{display:flex;align-items:center;justify-content:center;min-height:180px;color:var(--ink3);border-style:dashed;font-size:13px}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);color:var(--ink3);font-size:12px}
+footer p{margin:4px 0}
+@media (max-width:640px){.wrap{padding:24px 16px 40px}.hero{margin:44px 0 32px}.hero h1{font-size:30px}.grid{grid-template-columns:1fr}}
+</style></head><body>
+<svg class="bgfx" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g fill="none" stroke="#7cc8ff">
+<circle cx="1220" cy="250" r="150" stroke-opacity=".16" stroke-dasharray="6 7"/><circle cx="1220" cy="250" r="290" stroke-opacity=".12" stroke-dasharray="6 9"/>
+<circle cx="1220" cy="250" r="450" stroke-opacity=".08" stroke-dasharray="4 11"/><path d="M1220 40v40M1220 420v40M1010 250h40M1390 250h40" stroke-opacity=".22"/></g></svg>
+<div class="wrap">
+<header><img src="logo.svg" alt=""><div><b>上海城市智能体</b><span>SHANGHAI CITY AGENT</span></div></header>
+<section class="hero"><div class="k">CITY DATA MAP · 城市数据地图</div><h1>we want to see what happened under the city</h1><p>城市数据地图：以地点为单位，把 1 km / 3 km 圈内的建筑体块、周边配套、地铁与路网放进一张可以转动的三维地图。</p></section>
+<h2>PLACES · 地点</h2>
+<div class="grid"><a class="card" href="citic-plaza-se/"><img src="citic-plaza-se/preview.jpg" alt="中信广场东南 场地模型" loading="lazy"><div class="b"><div class="city">上海 · 虹口</div><h3>中信广场东南</h3><div class="sub">四川北路 × 塘沽路</div><div class="kp"><div><b>19,049</b><span>栋建筑</span></div><div><b>26</b><span>座地铁站</span></div><div><b>627</b><span>处配套</span></div></div><div class="m">1 KM / 3 KM · 数字为 3 km 圈 · 更新 2026-11-03</div></div></a><div class="card soon">更多地点与城市，陆续加入</div></div>
+<footer><p>数据：© OpenStreetMap contributors（ODbL 1.0）· 3D-GloBFP（CC BY 4.0）· CMAB（CC BY 4.0）。页面内嵌的 OSM 派生数据按 ODbL 1.0 提供。建筑高度部分为模型估计，地标按公开资料校正（各页「数据与口径」逐条列出处）；步行距离为路网估算。</p>
+<p>本站不含高德数据。</p></footer>
+</div></body></html>
