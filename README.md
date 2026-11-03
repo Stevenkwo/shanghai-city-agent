@@ -4,12 +4,12 @@
 
 城市数据地图：以地点为单位，把 1 km / 3 km 圈内的建筑体块、周边配套、地铁与路网放进一张可以转动的三维地图。
 
-**网站**：https://stevenkwo.github.io/shanghai-city-agent/
+**网站**：https://stevenkwo.github.io/shanghai-city-agent/（每个地点 1 km / 3 km 分两页，默认先开 1 km）
 
-| 地点 | 城市 | 更新 |
-|---|---|---|
-| [中信广场东南](https://stevenkwo.github.io/shanghai-city-agent/citic-plaza-se/) | 上海 · 虹口 | 2026-11-03 |
-| [悉尼·达令港](https://stevenkwo.github.io/shanghai-city-agent/sydney-darling-harbour/) | 悉尼 · 澳大利亚 | 2026-11-03 |
+| 地点 | 城市 | 分析圈 | 更新 |
+|---|---|---|---|
+| 中信广场东南 | 上海 · 虹口 | [1 km](https://stevenkwo.github.io/shanghai-city-agent/citic-plaza-se/) · [3 km](https://stevenkwo.github.io/shanghai-city-agent/citic-plaza-se/3km.html) | 2026-11-03 |
+| 悉尼·达令港 | 悉尼 · 澳大利亚 | [1 km](https://stevenkwo.github.io/shanghai-city-agent/sydney-darling-harbour/) · [3 km](https://stevenkwo.github.io/shanghai-city-agent/sydney-darling-harbour/3km.html) | 2026-11-03 |
 
 ## 数据与口径
 
