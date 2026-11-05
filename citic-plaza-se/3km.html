@@ -65,6 +65,9 @@
   h2::after { content:""; flex:1; height:1px; background:linear-gradient(90deg, var(--line2), transparent); }
 
   .chips { display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; }
+  .chips.n6 { grid-template-columns:repeat(6, 1fr); gap:5px; }
+  .chips.n6 .chip b { font-size:21px; }
+  .chips.n6 .chip span { font-size:10.5px; }
   .chip { position:relative; border:1px solid var(--line2); background:rgba(255,255,255,.02); padding:10px 0 8px; text-align:center; cursor:pointer;
     color:var(--ink3); transition:background .2s, border-color .2s, box-shadow .2s; user-select:none; }
   .chip::before { content:""; position:absolute; left:-1px; right:-1px; top:-1px; height:2px; background:var(--c); opacity:.3; }
@@ -128,6 +131,7 @@
 
   /* —— 地图上的控件与读数 —— */
   .ctrl { position:fixed; right:16px; top:16px; display:flex; z-index:7; }
+  #blang { color:var(--ink3); } #blang b { color:var(--ink); font-weight:600; }
   .ctrl button { background:var(--glass); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line2); color:var(--ink2);
     padding:9px 14px; font:600 11px var(--f-mono); letter-spacing:.14em; cursor:pointer; }
   .ctrl button + button { border-left:0; }
@@ -224,6 +228,15 @@
   .rsel button.on { color:var(--ink); background:rgba(124,200,255,.14); box-shadow:inset 0 -2px 0 var(--cyan); }
   /* 交通页 */
   .seg.wrap { flex-wrap:wrap; }
+  .seg.g3 { display:grid; grid-template-columns:repeat(3, 1fr); }
+  .seg.g3 button { border-left:1px solid var(--line2); }
+  .seg.g3 button:nth-child(3n+1) { border-left:0; }
+  .seg.g3 button:nth-child(n+4) { border-top:1px solid var(--line2); }
+  .hist { margin:10px 0 2px; }
+  .hist svg { display:block; width:100%; height:auto; overflow:visible; }
+  .hist text { font:9.5px var(--f-mono); fill:var(--ink3); }
+  .hist .mk text { fill:var(--ink); }
+  .lux { display:inline-block; margin-left:6px; padding:1px 5px; font:600 9.5px var(--f-mono); letter-spacing:.08em; color:#1a1408; background:#ffd166; vertical-align:2px; }
   .seg.wrap button { flex:1 0 auto; padding:6px 8px 5px; font-size:11.5px; line-height:1.25; border-left:1px solid var(--line2); margin-left:-1px; }
   .seg button .p { display:block; font-size:10px; color:var(--ink3); }
   .seg button.on .p { color:var(--cyan); }
@@ -477,7 +490,7 @@ return maplibregl$1;
 
 <button id="pbtn" title="收起 / 展开面板">‹</button>
 <div id="rail"></div>
-<div class="ctrl"><button id="b3d" class="on">3D</button><button id="b2d">2D</button><button id="breset">复位</button><button id="bprint">打印</button></div>
+<div class="ctrl"><button id="b3d" class="on">3D</button><button id="b2d">2D</button><button id="breset">复位</button><button id="bprint">打印</button><button id="blang" title="中文 / English"></button></div>
 <div class="hud hud-bl">
   <div id="compass" title="回正北"><div class="rot" id="needle"><span class="nl">N</span><span class="nd"></span></div></div>
   <div><div id="scaleTxt"></div><div id="scalebar"></div></div>
@@ -521,7 +534,10 @@ const usedGf = (SRC_N["3D-GloBFP 估"] || 0) > 0, usedCmab = (SRC_N["CMAB 估"] 
 const estPct = Math.round(((SRC_N["3D-GloBFP 估"] || 0) + (SRC_N["CMAB 估"] || 0)) / N_ALL * 100);
 const ESTS = [usedGf && "3D-GloBFP", usedCmab && "CMAB"].filter(Boolean).join(" / ");
 // 境外地点出英文页（1103 用户：海外就都改成英文版）：界面字写 L(中, 英)；数据里的中文分类名（子类、路级、图例键）显示时过 tr()，数据本身不动
-const EN = !IN_CN;
+// 1104 用户：要有中英文切换 —— 右上角「中 / EN」；选了就写进地址（#lang=）和本机记忆，切换 = 带着当前视图重载
+const LS = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 隐私模式 / 本地文件 */ } } };
+const LANG = ["zh", "en"].includes(HASH.get("lang")) ? HASH.get("lang") : ["zh", "en"].includes(LS.get("cdm-lang")) ? LS.get("cdm-lang") : IN_CN ? "zh" : "en";
+const EN = LANG === "en";
 const L = (zh, en) => (EN ? en : zh);
 const pl = (n, w) => `${fmt(n)} ${w}${n === 1 ? "" : "s"}`;
 const VOC = {
@@ -535,6 +551,7 @@ const VOC = {
   "人工校正（有出处）": "Manual correction (sourced)", "OSM 标注高度": "OSM height tag", "OSM 三维部件": "OSM 3D parts", "OSM 层数×3.2 m": "OSM levels × 3.2 m",
   "影像测高": "Imagery height", "3D-GloBFP 估": "3D-GloBFP estimate", "CMAB 估": "CMAB estimate",
   "OSM 标注": "OSM tag", "CMAB 估（GAIA 反推，≤1985 为下限）": "CMAB estimate (from GAIA; ≤1985 is a lower bound)",
+  "豪宅": "Luxury home", "无成交": "No sale since 2024", "无地价": "No land value",
 };
 const tr = (s) => (EN && VOC[s] != null ? VOC[s] : s);
 // 静态界面字（页签、标题、按钮、提示）：英文页开场换一遍；公开站「← 上海城市智能体」那句（build.py 换进来的）也在这里
@@ -549,8 +566,9 @@ const UI_EN = {
   "ROADS · 圈内路网（OSM）": "ROADS · WITHIN RADIUS (OSM)", "DATA · 数据与口径": "DATA · SOURCES & METHODS",
   "收起 / 展开面板": "Collapse / expand panel", "复位": "Reset", "打印": "Print", "回正北": "Reset to north",
 };
+document.documentElement.lang = EN ? "en" : "zh-CN";
+document.title = EN ? `${D.labelEn || D.label} · Site Model` : `${D.label} · 场地模型`;
 if (EN) {
-  document.documentElement.lang = "en";
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n; (n = w.nextNode());) {
     if (n.parentElement.tagName === "SCRIPT") continue;       // 数据块动辄十几 MB，不碰
@@ -563,13 +581,21 @@ if (EN) {
 // —— 五类配套：名称 + 色 ——
 const CAT = { metro: [L("地铁站", "Transit"), "#4f8dff"], biz: [L("商业", "Commerce"), "#ff8a3d"], edu: [L("学校", "Schools"), "#b392ff"], park: [L("景观", "Leisure"), "#3ddc97"], med: [L("医院", "Health"), "#ff5d6c"] };
 const ORDER = ["metro", "biz", "edu", "park", "med"];
+// 住宅（成交价 / 豪宅）：有成交数据的地点才有 —— 目前只有悉尼（估价总署数据只在本机，公开站 build.py 整块剥掉）
+const HS = D.housing;
+const LUX = "#ffd166", HOMEC = "#e9dfb8";   // 奶油色：1104 原用铜色 #b48a46，和商办褐 #b7875a 撞色
+if (HS) { CAT.home = [L("住宅", "Homes"), LUX]; ORDER.push("home"); }
 const catColor = ["match", ["coalesce", ["get", "cat"], ""], ...ORDER.flatMap((k) => [k, CAT[k][1]]), "#7cc8ff"];
 // 商业里的「商办」（写字楼为主）压暗一档，和零售 / 文娱分开读
 const OFFICE = "#b7875a";
 const areaColor = ["case", ["==", ["coalesce", ["get", "sub"], ""], "商办"], OFFICE, catColor];
 const bldHlColor = ["case", ["==", ["coalesce", ["get", "cs"], ""], "商办"], OFFICE, catColor];
 const poiColor = (p) => (p.sub === "商办" ? OFFICE : CAT[p.cat][1]);
-const LEAD = { biz: ["购物中心", "专业市场", "超市", "菜市场", "文娱"], edu: ["中学", "小学", "中小学", "幼儿园", "高校"], park: ["公园绿地", "滨水"], med: ["医院", "社区卫生服务中心", "门诊部", "诊所 / 门诊"] };
+const LEAD = { biz: ["购物中心", "专业市场", "超市", "菜市场", "文娱"], edu: ["中学", "小学", "中小学", "幼儿园", "高校"], park: ["公园绿地", "滨水"], med: ["医院", "社区卫生服务中心", "门诊部", "诊所 / 门诊"], home: ["豪宅"] };
+// 住宅楼着色：豪宅金色、其余有成交的住宅铜色（只在「住宅」开着时）
+const homeHl = ["match", ["coalesce", ["get", "hc"], ""], "lux", LUX, "res", HOMEC, "#7cc8ff"];
+// 澳元：A$4.39M / A$850k
+const aud = (v) => (v == null ? "—" : v >= 1e6 ? `A$${(v / 1e6).toFixed(v >= 1e7 ? 1 : 2)}M` : `A$${Math.round(v / 1e3)}k`);
 let tab = "poi", mode = "height", peek = null;
 const active = new Set(ORDER);
 // 悬停某个色块时只看这一类（peek）；否则看开关里选中的
@@ -582,7 +608,10 @@ const PAL = {
   function: [["居住", "#45b98a"], ["办公", "#5a8ef0"], ["商服", "#ff9f45"], ["公服", "#b392ff"], ["工业", "#c4925f"], ["其他", "#6d7a88"], ["未知", "#3a434f"]],
   era: [["1985 年前（下限）", "#9a6e4a"], ["1986–1999", "#c99257"], ["2000–2009", "#e6c58f"], ["2010–2020", "#5f9cf5"], ["2021 年后", "#29d3ff"], ["在建", "#ff6a1a"], ["未知", "#3a434f"]],
   source: [["人工校正（有出处）", "#ff8a3d"], ["OSM 标注高度", "#e9eef4"], ["OSM 三维部件", "#e9eef4"], ["OSM 层数×3.2 m", "#a5b2c0"], ["影像测高", "#4f8dff"], ["3D-GloBFP 估", "#5d7fa8"], ["CMAB 估", "#4a5562"], ["无高度", "#2a313b"]],
+  price: [["A$<1M", "#4c5bd6"], ["A$1–2M", "#8a4fd0"], ["A$2–3M", "#c6458f"], ["A$3–5M", "#ec6a52"], ["A$5–10M", "#f9a53a"], ["A$≥10M", "#ffe066"], ["无成交", "#3a434f"], ["其他", "#252c35"]],
+  land: [["<5k", "#4c5bd6"], ["5–10k", "#8a4fd0"], ["10–15k", "#c6458f"], ["15–25k", "#ec6a52"], ["25–50k", "#f9a53a"], ["≥50k", "#ffe066"], ["无地价", "#252c35"]],
 };
+const legLab = (m, k) => (m === "land" && /\d/.test(k) ? L(`${k} 澳元/㎡`, `A$${k}/m²`) : tr(k));
 const NOTE = EN ? {   // 英文页（境外）：同样按实际用到的数据源写
   height: `Colour = height. OSM tags first${ESTS ? `; gaps are filled with ${ESTS} estimates` : " (no remote-sensing estimates here)"}${HAS_OVR ? "; landmarks are corrected from public sources" : ""}.`,
   function: usedCmab ? "Use comes from the CMAB building with the largest overlap (a model estimate); landmarks follow the correction table."
@@ -597,7 +626,14 @@ const NOTE = EN ? {   // 英文页（境外）：同样按实际用到的数据�
     : "年代：只用 OSM 标注的建成年份（这里没有 CMAB），大多数楼记「未知」。",
   source: `每栋高度从哪来：实的（OSM 标注${HAS_OVR ? " / 校正" : ""}）与估的（${ESTS || "无"}）分开看。`,
 };
-const KEY = { height: null, function: "fn", era: "era", source: "src" };
+const KEY = { height: null, function: "fn", era: "era", source: "src", price: "pb", land: "lb" };
+if (HS) {
+  const pd = HS.span ? `${HS.span[0].slice(0, 7)} – ${HS.span[1].slice(0, 7)}` : "";
+  NOTE.price = L(`颜色 = 这栋楼 ${HS.since.slice(0, 4)} 年起住宅成交价的中位数（${pd}，${fmt(HS.n)} 笔落进 ${fmt(HS.nb)} 栋）。按总价不按单价：只有约四成公寓成交带面积，单价中位写在点楼卡片里。灰 = OSM 记居住但这段时间没卖过；更暗 = 非住宅或功能未知。`,
+    `Colour = median residential sale price of each building since ${HS.since.slice(0, 4)} (${pd}; ${fmt(HS.n)} sales in ${fmt(HS.nb)} buildings). Total price, not per m²: only about 40% of apartment sales carry an area, so per-m² medians are shown in the building card instead. Grey = tagged residential in OSM but not sold in this period; darker = non-residential or unknown use.`);
+  NOTE.land = L(`颜色 = 土地价值 ÷ 用地面积（估价总署 ${HS.landBd} 基准日，只算地、不含房子）。分契楼（公寓）整栋一个地价；挂到 40 m 内最近的那栋楼。`,
+    `Colour = land value ÷ site area (Valuer General NSW, base date ${HS.landBd}; land only, excluding buildings). A strata building has one land value for the whole scheme; each value is attached to the nearest building within 40 m.`);
+}
 const heightExpr = ["step", ["coalesce", ["get", "h"], 0], "#3a4757", 24, "#3f73a3", 50, "#4fa0dc", 100, "#93d3ff", 200, "#ff8a3d"];
 const NEUTRAL = ["step", ["coalesce", ["get", "h"], 0], "#28313b", 24, "#2f3a47", 50, "#374557", 100, "#41526a", 200, "#4c5f7c"];
 const matchExpr = (k) => ["match", ["coalesce", ["get", KEY[k]], "未知"], ...PAL[k].flatMap(([a, c]) => [a, c]), "#3a434f"];
@@ -639,7 +675,7 @@ $("rsel").hidden = RSEL.length < 2;
 // 换半径 = 换一份数据：写进地址（连同当前页签）再重载；拆页时跳到那一档的页
 document.querySelectorAll("#rsel button").forEach((b) => b.onclick = () => {
   if (+b.dataset.r === R) return;
-  const h = new URLSearchParams({ r: b.dataset.r, t: tab, ...(arefOn ? { ref: 1 } : {}) }).toString();
+  const h = new URLSearchParams({ r: b.dataset.r, t: tab, ...(HASH.get("lang") ? { lang: LANG } : {}), ...(arefOn ? { ref: 1 } : {}) }).toString();
   if (RADIUS_PAGES) { location.href = `${RADIUS_PAGES[b.dataset.r]}#${h}`; return; }
   location.hash = h;
   location.reload();
@@ -660,7 +696,7 @@ for (const k of ORDER) {
   D.poi.filter((p) => p.out).forEach((p) => { p.rk = 999; });
   D.poi.filter((p) => p.cat === k && !p.out).sort((a, b) => (LEAD[k].includes(a.sub) ? 0 : 1) - (LEAD[k].includes(b.sub) ? 0 : 1) || a.d - b.d).forEach((p, i) => { p.rk = i; });
 }
-const counts = { metro: M0.n, biz: S.biz.n, edu: S.edu.n, park: S.park.n, med: S.med.n };
+const counts = { metro: M0.n, biz: S.biz.n, edu: S.edu.n, park: S.park.n, med: S.med.n, home: HS ? S.home.res : 0 };
 const expanded = new Set();
 
 const fmtArea = (m2) => (EN ? `${fmt(Math.round(m2))} m²` : m2 >= 1e4 ? `${(m2 / 1e4).toFixed(1)} 万㎡` : `${Math.round(m2).toLocaleString("en-US")} ㎡`);
@@ -674,6 +710,18 @@ function volHtml(k) {
   const bars = (vals, fmt) => { const mx = Math.max(...vals, 1e-9); return vals.map((v, i) => `<div class="bd"><span>${BL[i]}</span><i style="width:${(v / mx * 100).toFixed(0)}%"></i><span>${fmt(v)}</span></div>`).join(""); };
   const li = (a, b, d) => `<div class="li"><span>${a}</span><span>${b}</span><span>${d}</span></div>`;
   let h = `<div class="k">${L(`${CAT[k][0]} · ${RL.toUpperCase()} 内体量`, `${CAT[k][0]} · WITHIN ${RL.toUpperCase()}`)}</div>`;
+  if (k === "home") {
+    const hs = D.poi.filter((p) => p.cat === "home").sort((a, b) => b.pm - a.pm);
+    const SH = S.home, nb = HS.nb;
+    h = `<div class="k">${L(`住宅 · ${RL.toUpperCase()} 内成交`, `HOMES · SOLD WITHIN ${RL.toUpperCase()}`)}</div>`
+      + `<div class="big"><b>${SH.n}</b><small>${L(`栋豪宅 · 共 ${fmt(nb)} 栋有成交`, `luxury ${SH.n === 1 ? "building" : "buildings"} · of ${pl(nb, "building")} sold`)}</small></div>`
+      + `<div class="sub">${L(`门槛 ${aud(HS.p90)}（${fmtR(HS.rref)} 内 ${fmt(HS.nref)} 笔成交的前 10%）· 中位 ${aud(HS.p50)}`, `Threshold ${aud(HS.p90)} (top 10% of ${fmt(HS.nref)} sales within ${fmtR(HS.rref)}) · median ${aud(HS.p50)}`)}</div>`
+      + `<h4>${L("按距离", "By distance")}</h4>` + bars(BL.map((_, i) => hs.filter((p) => bandOf(p.d) === i).length), (v) => L(`${v} 栋`, `${v}`))
+      + `<h4>${L("成交价中位最高 · 距离", "Highest median price · distance")}</h4>` + hs.slice(0, 6).map((p) => li(esc(p.n), aud(p.pm), `${p.d} m`)).join("")
+      + `<div class="nt">${L(`豪宅 = 楼的成交价中位数进 ${fmtR(HS.rref)} 市场前 10%（1 km 页用同一个门槛）。公寓楼至少 ${HS.strataMin} 笔成交才判；独栋 / 联排 1 笔即判，但要在 R1–R3 / C4 住宅分区、地块 ≤ 2000 ㎡（R4 高密度区的独栋多是开发商收地；整块地、混合用地上的成交照样进价格统计，只是不判豪宅）。成交来自新州估价总署，${HS.src === "psi" ? "批量成交包（每一笔登记成交）" : "SIX Maps（每套只有最近一次，公寓楼每栋只挂最近一套 —— 判不了公寓）"}。`,
+        `Luxury = building median sale price in the top 10% of the ${fmtR(HS.rref)} market (the 1 km page uses the same threshold). Apartment buildings need at least ${HS.strataMin} sales; a house or terrace counts with one, but only on R1–R3 / C4 residential zoning and a lot of 2,000 m² or less (house sales on R4 high-density land are mostly developer site purchases; those and whole-site or mixed-use sales still count in the price statistics, just not as luxury). Sales from the NSW Valuer General: ${HS.src === "psi" ? "bulk sales files (every registered sale)" : "SIX Maps (latest sale per unit only, and only one unit per apartment building — so apartments cannot be judged)"}.`)}</div>`;
+    return h;
+  }
   if (k === "metro") {
     const st = D.stations.filter((s) => s.in);
     h += `<div class="big"><b>${M0.n}</b><small>${L(`站 · ${M0.lines.length} 条线 · ${M0.ex} 个出入口`, `${M0.n === 1 ? "station" : "stations"} · ${pl(M0.lines.length, "line")} · ${pl(M0.ex, "entrance")}`)}</small></div>`
@@ -727,6 +775,7 @@ const bindPeek = (sel) => document.querySelectorAll(sel).forEach((el) => {
   el.onmouseleave = () => { clearTimeout(peekT); peekT = setTimeout(hideVol, 150); };
 });
 function renderChips() {
+  $("chips").classList.toggle("n6", ORDER.length > 5);
   $("chips").innerHTML = ORDER.map((k) => `<div class="chip ${active.has(k) ? "on" : ""}" data-k="${k}" style="--c:${CAT[k][1]}"><b>${counts[k]}</b><span>${CAT[k][0]}</span></div>`).join("");
   document.querySelectorAll(".chip").forEach((el) => el.onclick = () => { const k = el.dataset.k; active.has(k) ? active.delete(k) : active.add(k); applyAll(); });
   bindPeek(".chip");
@@ -756,6 +805,15 @@ function renderPoiPanel() {
         + D.stations.map((s) => `<div class="it ${s.in ? "" : "out"}" data-st="${esc(s.n)}"><span class="nm">${esc(stn(s.n))}${s.lines.map(lineBadge).join("")}${s.in ? "" : `<span class="sb">${L("圈外", "outside")}</span>`}</span><span class="dm">${s.d} m</span><span class="wk">${s.wm ?? "—"} ${L("分", "min")}</span></div>`).join("") + `</div>`;
       continue;
     }
+    if (k === "home") {
+      const xs = D.poi.filter((p) => p.cat === "home").sort((a, b) => b.pm - a.pm), lim = expanded.has(k) ? xs.length : 8;
+      g += `<div class="grp" style="--c:${c}"><div class="gh"><b>${CAT.home[0]}</b><span class="cnt">${S.home.res}</span><span class="t">${L(`${RL} 内 ${HS.since.slice(0, 4)} 年起有成交 · 豪宅 ${xs.length}`, `sold within ${RL} since ${HS.since.slice(0, 4)} · ${xs.length} luxury`)}</span></div>`
+        + `<div class="pills"><span class="pill">${L(`豪宅门槛 ${aud(HS.p90)}（${fmtR(HS.rref)} 前 10%）`, `Luxury ≥ ${aud(HS.p90)} (top 10%, ${fmtR(HS.rref)})`)}</span><span class="pill">${L(`中位 ${aud(HS.p50)}`, `Median ${aud(HS.p50)}`)}</span>${HS.pq50 ? `<span class="pill">${L(`公寓单价中位 ${aud(HS.pq50)}/㎡`, `Apartments ${aud(HS.pq50)}/m²`)}</span>` : ""}</div>`
+        + `<div class="it hd"><span>${L("豪宅 · 成交价中位", "Luxury · median price")}</span><span>${L("直线", "Distance")}</span><span>${L("步行", "Walk")}</span></div>`
+        + xs.slice(0, lim).map((p) => `<div class="it" data-id="${p.id}"><span class="nm">${esc(p.n)}<span class="sb">${aud(p.pm)} · ${L(`${p.pn} 笔`, pl(p.pn, "sale"))}${p.pq ? ` · ${aud(p.pq)}/${L("㎡", "m²")}` : ""}</span></span><span class="dm">${p.d} m</span><span class="wk">${p.wm ?? "—"} ${L("分", "min")}</span></div>`).join("")
+        + (xs.length > 8 ? `<span class="more" data-more="${k}">${expanded.has(k) ? L("收起 ▲", "Show less ▲") : L(`展开全部 ${xs.length} ▼`, `Show all ${xs.length} ▼`)}</span>` : "") + `</div>`;
+      continue;
+    }
     const xs = D.poi.filter((p) => p.cat === k && !p.out);
     const lim = expanded.has(k) ? xs.length : 8;
     const extra = k === "park" ? ` · ${L("公园绿地", "parks")} ${S.park.ha} ha` : "";
@@ -783,8 +841,22 @@ function renderLegend(m) {
   const st = D.stats[m] || {};
   const total = Object.values(st).reduce((a, b) => a + b, 0) || 1;
   $("legend").innerHTML = PAL[m].filter(([k]) => st[k]).map(([k, c]) =>
-    `<div class="row"><i style="background:${c};opacity:${OPACITY};box-shadow:0 0 6px ${c}"></i><span class="lab">${esc(tr(k))}</span><span class="bar"><b style="width:${(st[k] / total * 100).toFixed(1)}%"></b></span><span class="n">${st[k]}</span></div>`).join("");
+    `<div class="row"><i style="background:${c};opacity:${OPACITY};box-shadow:0 0 6px ${c}"></i><span class="lab">${esc(legLab(m, k))}</span><span class="bar"><b style="width:${(st[k] / total * 100).toFixed(1)}%"></b></span><span class="n">${st[k]}</span></div>`).join("")
+    + (m === "price" && HS ? histSvg() : "");
   $("modeNote").textContent = NOTE[m];
+}
+// 分布图：圈内每一笔住宅成交（不是每栋楼），横轴对数；竖线 = 中位数与豪宅门槛（第 90 百分位）
+function histSvg() {
+  const { edges, n } = HS.hist, W = 300, H = 92, top = 16, base = 70, mx = Math.max(...n, 1);
+  const lx = (v) => (Math.log10(v) - 5) / 3 * W;                                  // 10 万 → 1 亿澳元
+  const col = (v) => (PAL.price.find(([k]) => k === binOf(v)) || [0, "#4c5bd6"])[1];
+  const binOf = (v) => (v < 1e6 ? "A$<1M" : v < 2e6 ? "A$1–2M" : v < 3e6 ? "A$2–3M" : v < 5e6 ? "A$3–5M" : v < 1e7 ? "A$5–10M" : "A$≥10M");
+  const bars = n.map((c, i) => { const x0 = lx(edges[i]), x1 = lx(edges[i + 1]), h = c / mx * (base - top);
+    return c ? `<rect x="${(x0 + 0.6).toFixed(1)}" y="${(base - h).toFixed(1)}" width="${(x1 - x0 - 1.2).toFixed(1)}" height="${h.toFixed(1)}" fill="${col(Math.sqrt(edges[i] * edges[i + 1]))}" opacity=".85"/>` : ""; }).join("");
+  const ticks = [[1e5, "100k"], [1e6, "1M"], [1e7, "10M"], [1e8, "100M"]].map(([v, t]) => `<line x1="${lx(v)}" x2="${lx(v)}" y1="${base}" y2="${base + 4}" stroke="var(--line2)"/><text x="${lx(v)}" y="${base + 14}" text-anchor="middle">${t}</text>`).join("");
+  const mk = (v, lab, anchor) => `<g class="mk"><line x1="${lx(v)}" x2="${lx(v)}" y1="${top - 6}" y2="${base}" stroke="${anchor ? LUX : "var(--ink2)"}" stroke-dasharray="3 2"/><text x="${lx(v) + (anchor ? 4 : -4)}" y="${top - 8}" text-anchor="${anchor ? "start" : "end"}">${lab} ${aud(v)}</text></g>`;
+  return `<div class="hist"><svg viewBox="0 0 ${W} ${H}"><line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="var(--line2)"/>${bars}${ticks}`
+    + `${mk(HS.p50, L("中位", "median"), false)}${mk(HS.p90, L("豪宅门槛", "luxury ≥"), true)}</svg></div>`;
 }
 renderLegend("height");
 const as = D.asOf || {};
@@ -797,19 +869,30 @@ $("massNote").textContent = EN ? (usedGf || usedCmab
 $("roads").innerHTML = Object.entries(D.roadKm).map(([k, v]) => `<span>${esc(tr(k))}</span><span>${v} km</span>`).join("");
 const fills = (EN ? [usedGf && "3D-GloBFP (c. 2020 imagery)", usedCmab && `CMAB (${esc(as.cmab || "2020-12-31")})`]
   : [usedGf && `3D-GloBFP（${esc(as.globfp || "约 2020")}）`, usedCmab && `CMAB（${esc(as.cmab || "2020-12-31")}）`]).filter(Boolean);
+// 住宅成交 / 地价的口径与许可（只在有数据的本机版出现）
+function HS_NOTE() {
+  const d = HS.drop || {}, dn = (k) => fmt(d[k] || 0);
+  const src = HS.src === "psi"
+    ? L("新州估价总署批量成交包（每一笔登记成交，含物业性质、单元号、合同日）", "NSW Valuer General bulk sales files (every registered sale, with nature of property, unit number and contract date)")
+    : L("SIX Maps 估价服务（每套只有最近一次成交；公寓楼每栋只挂最近一套，判不了公寓）", "SIX Maps valuation service (latest sale per unit only; one unit per apartment building, so apartments cannot be judged)");
+  return L(`住宅成交：${src}，合同日 ${HS.span ? `${HS.span[0]} – ${HS.span[1]}` : `${HS.since} 起`}。只算住宅、一笔买一处（一套 + 车位并作一笔，打包交易剔除）、价格 ≥ 10 万澳元；地址按门牌 + 街名 + 区落到 NSW 官方地址点（Spatial Services，CC BY 4.0），区名对不上的只在离该区中心 1.5 km 内才认，再落进 OSM 楼。剔除：打包 ${dn("打包交易")} 笔、圈外同名街 ${dn("同名街·区不符")} 笔、对不上地址 ${dn("地址对不上")} 笔（多在圈外）、整栋楼一个产权卖掉 ${dn("整栋成交")} 笔。公寓单价 = 价格 ÷ 分契地块面积（含阳台、有时含车位，约四成成交有面积）。地价：估价总署 ${HS.landBd} 基准日土地价值（不含房子）。许可 CC BY-NC-ND 4.0：只在本机自用，公开站不带这两层。`,
+    `Home sales: ${src}, contract dates ${HS.span ? `${HS.span[0]} – ${HS.span[1]}` : `from ${HS.since}`}. Residential only, one dwelling per sale (a unit plus its car space counts once; portfolio sales are dropped), price ≥ A$100k. Addresses are matched by number, street and suburb to official NSW address points (Spatial Services, CC BY 4.0); a match with a different suburb is accepted only within 1.5 km of that suburb's centre. Then to OSM buildings. Dropped: ${dn("打包交易")} portfolio sales, ${dn("同名街·区不符")} same-name streets outside the area, ${dn("地址对不上")} unmatched (mostly outside the radius), ${dn("整栋成交")} whole-building sales. Apartment price per m² = price ÷ strata lot area (includes balconies and sometimes parking; about 40% of sales have an area). Land value: Valuer General, base date ${HS.landBd}, land only. Licence CC BY-NC-ND 4.0: local use only; the public site does not carry these layers.`);
+}
 $("notes").innerHTML = (EN ? [
   `Massing: OSM footprints first (${esc(as.osm || "?")})` + (fills.length ? `, gaps filled with ${fills.join(" / ")}` : ", heights from OSM tags only (no remote-sensing heights)") + (HAS_OVR ? `; ${D.overrides.length} manual corrections, each sourced below` : "") + ".",
   `Amenities: fetched from OpenStreetMap (${bj(D.poiAt)}). Stations, entrances and lines also come from OSM; line colours are the official ones${/train/.test(D.metroSrc || "") ? `; "Transit" covers train, metro and light-rail stations` : ""}.`,
   "Walking distance: shortest path on the OSM network (no motorways) at 80 m/min, from the analysis point to the network point nearest each facility's boundary. Estimates.",
+  ...(HS ? [HS_NOTE()] : []),
   "© OpenStreetMap contributors (ODbL)" + (usedGf ? " · 3D-GloBFP (CC BY 4.0)" : "") + (usedCmab ? " · CMAB (CC BY 4.0)" : ""),
 ] : [
   `白模：OSM 轮廓优先（${esc(as.osm || "?")}）` + (fills.length ? `＋ ${fills.join("／")}补` : "，高度只用 OSM 标注（没有遥感补高）") + (HAS_OVR ? `，人工校正 ${D.overrides.length} 条（逐条出处见下）` : "") + "。",
   `周边配套：OpenStreetMap 现取（${bj(D.poiAt)}）。地铁站、出入口、线路同为 OSM，线色为官方色${/train/.test(D.metroSrc || "") ? "；「地铁站」含火车、地铁与轻轨站" : ""}。`,
   "步行距离：OSM 路网最短路（不走快速路），80 m/分钟；起点为分析点，终点为设施边界最近的路网点。估算值。",
   ...(IN_CN ? ["公开版不含高德数据：实时路况、路况快照与官方路况截图只在本机版；高德 POI、控规地块也不进本文件。"] : []),
+  ...(HS ? [HS_NOTE()] : []),
   "© OpenStreetMap contributors（ODbL）" + (usedGf ? " · 3D-GloBFP（CC BY 4.0）" : "") + (usedCmab ? " · CMAB（CC BY 4.0）" : ""),
 ]).map((t) => `<p>${t}</p>`).join("");
-document.querySelector(".hud-br").textContent = "© OpenStreetMap contributors" + (usedGf ? " · 3D-GloBFP" : "") + (usedCmab ? " · CMAB" : "");
+document.querySelector(".hud-br").textContent = "© OpenStreetMap contributors" + (usedGf ? " · 3D-GloBFP" : "") + (usedCmab ? " · CMAB" : "") + (HS ? " · NSW Valuer General" : "");
 $("ovr").innerHTML = D.overrides.map((o) => `<li><b>${esc(o.n)}</b>${L("：", ": ")}${esc(o.t || "")}${o.u ? ` · <a href="${esc(o.u)}" target="_blank" rel="noopener">${L("出处", "source")}</a>` : ""}</li>`).join("");
 
 // —— 地图 ——
@@ -984,6 +1067,17 @@ map.on("load", () => {
   setTimeout(() => { $("boot").style.opacity = 0; setTimeout(() => $("boot").remove(), 650); }, 250);
 });
 
+// 悬停某类时的引线只连到悬停卡里列出的那几处（前 6）+ 最近一处；车站最多 12 个 ——
+// 1104 用户：3 km 档每处都连一根太密（Chatswood 豪宅 389 根连成一朵菊花）
+function peekTargets(k) {
+  if (k === "metro") return D.stations.filter((s) => s.in).sort((a, b) => a.d - b.d).slice(0, 12).map((s) => s.ll);
+  const xs = D.poi.filter((p) => p.cat === k && !p.out);
+  const top = k === "home" ? [...xs].sort((a, b) => b.pm - a.pm)
+    : k === "park" ? xs.filter((p) => p.sub === "公园绿地" && p.ha).sort((a, b) => b.ha - a.ha)
+    : xs.filter((p) => p.gfa).sort((a, b) => b.gfa - a.gfa);
+  const near = S[k] && S[k].near ? xs.find((p) => p.id === S[k].near.id) : null;
+  return [...new Set([...top.slice(0, 6), near].filter(Boolean))].map((p) => p.ll);
+}
 // —— 状态 → 图层 ——
 // 引线：基地 → 每类最近一处（屏幕坐标，随相机重画）
 function leaders() {
@@ -992,7 +1086,7 @@ function leaders() {
   const out = [];
   if (peek) {
     const a = map.project(siteC), c = CAT[peek][1];
-    const pts = peek === "metro" ? D.stations.filter((s) => s.in).map((s) => s.ll) : D.poi.filter((p) => p.cat === peek && !p.out).map((p) => p.ll);
+    const pts = peekTargets(peek);
     for (const ll of pts) {
       const b = map.project(ll);
       out.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${c}" style="color:${c}" opacity=".55"/>`);
@@ -1044,14 +1138,18 @@ map.on("moveend", () => { if (!inToML) declutter(); });    // 跟着高德逐帧
 function applyBuildings() {
   const base = [">", ["coalesce", ["get", "h"], 0], 0];
   const hl = poiMode() ? [...shown()].filter((k) => k !== "metro") : [];
-  const inHl = ["in", ["coalesce", ["get", "cat"], ""], ["literal", hl]];
+  const inCat = ["in", ["coalesce", ["get", "cat"], ""], ["literal", hl]];
+  const homeOn = !!HS && hl.includes("home");
+  const inHl = homeOn ? ["any", inCat, ["has", "hc"]] : inCat;
+  const hlCol = homeOn ? ["case", ["has", "hc"], homeHl, bldHlColor] : bldHlColor;
   const flowDim = tab === "flow" && !peek && (snapOn || pedOn || trafficOn);
   if (poiMode()) {
     map.setFilter("blds", hl.length ? ["all", base, ["!", inHl]] : base);
     map.setFilter("blds-hl", ["all", base, inHl]);
+    map.setPaintProperty("blds-hl", "fill-extrusion-color", hlCol);
     map.setPaintProperty("blds", "fill-extrusion-color", NEUTRAL);
     map.setPaintProperty("blds", "fill-extrusion-opacity", 0.55);
-    map.setPaintProperty("edges", "fill-extrusion-color", ["case", inHl, bldHlColor, "#7fa6c8"]);
+    map.setPaintProperty("edges", "fill-extrusion-color", ["case", inHl, hlCol, "#7fa6c8"]);
   } else {
     map.setFilter("blds", base);
     map.setFilter("blds-hl", ["==", ["get", "cat"], "__none__"]);
@@ -1101,6 +1199,10 @@ function setTab(t) {
   applyAll();
 }
 document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => setTab(b.dataset.t));
+if (HS) {
+  $("modes").insertAdjacentHTML("beforeend", `<button data-m="price">${L("成交价", "Sale price")}</button><button data-m="land">${L("地价", "Land value")}</button>`);
+  $("modes").classList.add("g3");
+}
 document.querySelectorAll("#modes button").forEach((b) => b.onclick = () => {
   mode = b.dataset.m;
   document.querySelectorAll("#modes button").forEach((x) => x.classList.toggle("on", x === b));
@@ -1111,6 +1213,13 @@ $("b3d").onclick = () => { $("b3d").classList.add("on"); $("b2d").classList.remo
 $("b2d").onclick = () => { $("b2d").classList.add("on"); $("b3d").classList.remove("on"); home(0); };
 $("breset").onclick = () => home(map.getPitch() > 1 ? 52 : 0);
 $("bprint").onclick = () => window.print();
+$("blang").innerHTML = EN ? `<b>EN</b> / 中` : `<b>中</b> / EN`;
+$("blang").onclick = () => {
+  const to = EN ? "zh" : "en";
+  LS.set("cdm-lang", to);
+  location.hash = new URLSearchParams({ r: R, t: tab, lang: to, ...(arefOn ? { ref: 1 } : {}) }).toString();
+  location.reload();
+};
 // 收起面板：点按钮 = 手动（地图中心跟着让出的空间平移）；拖 / 缩放 / 旋转地图 = 自动收起（不动相机，免得和手势打架）
 let autoOpen = false, hideT = 0;
 const isCollapsed = () => document.body.classList.contains("collapsed");
@@ -1159,6 +1268,13 @@ map.on("mousemove", (e) => { $("cur").textContent = `${latS(e.lngLat.lat)} ${lon
 const kv = (rows) => `<div class="kv">${rows.map(([a, b]) => `<span>${a}</span><span>${esc(b)}</span>`).join("")}</div>`;
 function card(html, c) { $("card").style.setProperty("--c", c || "#7cc8ff"); $("cardBody").innerHTML = html; $("card").style.display = "block"; declutter(); }
 function showPoi(p) {
+  if (p.cat === "home") {
+    card(`<div class="k">${CAT.home[0]} · ${esc(tr(p.sub))}</div><h3>${esc(p.n)}<span class="lux">TOP 10%</span></h3>`
+      + kv(EN ? [["Median sale", aud(p.pm)], ["Sales since 2024", `${p.pn}${p.pst ? " (strata units)" : " (house / terrace)"}`], ...(p.pq ? [["Median per m² (strata lot)", `${aud(p.pq)}/m²`]] : []), ["Highest", aud(p.pmax)], ["Distance", `${p.d} m`], ["Walk (est.)", p.w != null ? `${p.w} m · ~${p.wm} min` : "—"]]
+        : [["成交价中位", aud(p.pm)], ["2024 年起成交", `${p.pn} 笔${p.pst ? "（分契公寓）" : "（独栋 / 联排）"}`], ...(p.pq ? [["单价中位（分契地块面积）", `${aud(p.pq)}/㎡`]] : []), ["最高一笔", aud(p.pmax)], ["直线距离", `${p.d} m`], ["步行（估）", p.w != null ? `${p.w} m · 约 ${p.wm} 分钟` : "—"]])
+      + `<div class="src">${L("成交：新州估价总署（NSW Valuer General），CC BY-NC-ND 4.0，仅本机。", "Sales: NSW Valuer General, CC BY-NC-ND 4.0 (local copy only).")}</div>`, LUX);
+    return;
+  }
   const [t, id] = p.osm.split("/");
   card(`<div class="k">${CAT[p.cat][0]} · ${esc(tr(p.sub))}</div><h3>${esc(p.n)}</h3>`
     + kv(EN ? [["Distance", `${p.d} m`], ["Walk (est.)", p.w != null ? `${p.w} m · ~${p.wm} min` : "—"], ["Extent", p.area ? "Mapped area" : "Point"]]
@@ -1194,7 +1310,21 @@ map.on("click", (e) => {
     ["年代", p.y ? `${p.y}（${p.era}）` : p.era], ["年代口径", p.ys || "—"],
   ];
   if (p.cat) rows.unshift([L("配套", "Amenity"), `${CAT[p.cat][0]} · ${tr(p.cs)}`]);
-  card(`<div class="k">${L("BUILDING · 建筑", "BUILDING")}</div><h3>${esc(p.nm || p.cn || L("未命名建筑", "Unnamed building"))}</h3>${kv(rows)}${p.cite ? `<div class="src">${L("出处：", "Source: ")}${esc(p.cite)}</div>` : ""}`, p.cat ? CAT[p.cat][1] : null);
+  // 成交 / 地价（MapLibre 把数组属性转成了字符串，lh 要 parse 回来）
+  if (p.pn) rows.push([L("住宅成交（2024 起）", "Home sales since 2024"), L(`${p.pn} 笔 · 中位 ${aud(p.pm)}`, `${p.pn} · median ${aud(p.pm)}`)],
+    [L("成交价区间", "Price range"), p.pn > 1 ? `${aud(p.pmin)} – ${aud(p.pmax)}` : aud(p.pm)],
+    [L("类型 · 最近一笔", "Type · latest"), `${p.pst ? L("分契公寓", "Strata units") : L("独栋 / 联排", "House / terrace")} · ${p.plast}`]);
+  if (p.pq) rows.push([L("单价中位（分契地块面积）", "Median per m² (strata lot)"), L(`${aud(p.pq)}/㎡ · ${p.pqn} 笔有面积`, `${aud(p.pq)}/m² · ${p.pqn} with area`)]);
+  if (p.lvm) {
+    const lh = typeof p.lh === "string" ? JSON.parse(p.lh) : p.lh;
+    const chg = lh && lh.length === 5 && lh[4] ? Math.round((lh[0] / lh[4] - 1) * 100) : null;
+    rows.push([L("地价（只算地）", "Land value (land only)"), `${aud(p.lv)} · ${fmtArea(p.lva)}`],
+      [L("地价单价", "Land value per m²"), `${aud(p.lvm)}/${L("㎡", "m²")}${chg != null ? ` · ${L("五年", "5 yr")} ${chg >= 0 ? "+" : ""}${chg}%` : ""}`]);
+    if (p.lzn) rows.push([L("分区", "Zoning"), p.lzn]);
+  }
+  const nm = p.nm || p.cn || p.pnm || p.pad;
+  const hsrc = p.pn || p.lvm ? `<div class="src">${L("成交 / 地价：新州估价总署（NSW Valuer General），CC BY-NC-ND 4.0，仅本机。", "Sales / land value: NSW Valuer General, CC BY-NC-ND 4.0 (local copy only).")}</div>` : "";
+  card(`<div class="k">${L("BUILDING · 建筑", "BUILDING")}</div><h3>${esc(nm || L("未命名建筑", "Unnamed building"))}${p.hc === "lux" ? `<span class="lux">TOP 10%</span>` : ""}</h3>${kv(rows)}${p.cite ? `<div class="src">${L("出处：", "Source: ")}${esc(p.cite)}</div>` : ""}${hsrc}`, p.hc === "lux" ? LUX : p.cat ? CAT[p.cat][1] : null);
 });
 $("cardx").onclick = () => { $("card").style.display = "none"; declutter(); };
 map.on("mousemove", (e) => { map.getCanvas().style.cursor = map.queryRenderedFeatures(e.point, { layers: ["blds", "blds-hl", "poi-fill"] }).length ? "pointer" : ""; });
@@ -1521,7 +1651,7 @@ map.on("move", () => { if (arefAct && amap && arefLead === "ml") toAmap(); });
   $("arefFull").onclick = () => arefSetCx(arefCx <= panelEdge() + 2 ? (panelEdge() + innerWidth) / 2 : panelEdge());
   addEventListener("resize", () => { if (arefCx > innerWidth) arefSetCx(innerWidth); });
 })();
-function writeHash() { history.replaceState(null, "", "#" + new URLSearchParams({ r: R, t: tab, ...(arefOn ? { ref: 1 } : {}) }).toString()); }
+function writeHash() { history.replaceState(null, "", "#" + new URLSearchParams({ r: R, t: tab, ...(HASH.get("lang") ? { lang: LANG } : {}), ...(arefOn ? { ref: 1 } : {}) }).toString()); }
 
 // —— 快照配对截图（tools/amap_ref_shot.mjs，定时取样时拍）：同一时刻、同一视角（俯视、正北、圈装满）的本页 vs 高德官方路况 ——
 // 只是两张图：并排看，或叠起来拖竖线（卷帘）；离线文件里也能看。
